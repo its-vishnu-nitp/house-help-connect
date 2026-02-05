@@ -1,0 +1,85 @@
+# ===============================
+# Node.js dependencies
+# ===============================
+node_modules/
+**/node_modules/
+
+# ===============================
+# Environment variables (secrets)
+# ===============================
+.env
+.env.*
+backend/.env
+frontend/.env
+
+# ===============================
+# Logs
+# ===============================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# ===============================
+# Backend files
+# ===============================
+backend/logs/
+backend/*.log
+
+# ===============================
+# Frontend build files
+# ===============================
+frontend/build/
+frontend/dist/
+
+# ===============================
+# General build folders
+# ===============================
+build/
+dist/
+
+# ===============================
+# Coverage reports
+# ===============================
+coverage/
+
+# ===============================
+# OS generated files
+# ===============================
+.DS_Store
+Thumbs.db
+
+# ===============================
+# IDE / Editor files
+# ===============================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ===============================
+# Cache & temp files
+# ===============================
+.cache/
+.tmp/
+.temp/
+
+# ===============================
+# Optional: local uploads
+# ===============================
+uploads/
+
+# ===============================
+# Misc
+# ===============================
+*.pid
+*.seed
+*.pid.lock
+
+
+# plan
+projectHighLevelPlan.md
+projectModulePlan.md
