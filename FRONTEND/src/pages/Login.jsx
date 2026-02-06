@@ -8,14 +8,16 @@ const Login = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
+
     try {
-      loginUser({ email, password });
+      await loginUser({ email, password });
       navigate("/dashboard");
     } catch (err) {
       setPassword("");
-      setError(err.message);
+      setError(err.response?.data?.message || "Login failed");
     }
   };
 
@@ -28,7 +30,7 @@ const Login = () => {
           type="email"
           placeholder="Email"
           value={email}
-          className="w-full p-2 mb-4 border rounded input-field"
+          className="w-full p-2 mb-4 border rounded"
           onChange={(e) => {
             setEmail(e.target.value);
             setError("");
@@ -39,8 +41,8 @@ const Login = () => {
         <input
           type="password"
           placeholder="Password"
-          value={password} 
-          className="w-full p-2 mb-4 border rounded input-field"
+          value={password}
+          className="w-full p-2 mb-4 border rounded"
           onChange={(e) => {
             setPassword(e.target.value);
             setError("");
@@ -48,12 +50,13 @@ const Login = () => {
           required
         />
 
-        <p className="h-2 mb-4 text-sm text-left text-red-600">
-          {error && `**${error}`}
-        </p>
+        {error && (
+          <p className="mb-4 text-sm text-left text-red-600">
+            {error}
+          </p>
+        )}
 
-
-        <button className="w-full py-2 mt-1 text-white bg-blue-600 rounded btn">
+        <button className="w-full py-2 text-white bg-blue-600 rounded">
           Login
         </button>
 

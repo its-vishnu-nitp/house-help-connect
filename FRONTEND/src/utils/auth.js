@@ -1,33 +1,39 @@
-export const registerUser = (user) => {
-  const users = JSON.parse(localStorage.getItem("users")) || [];
+import api from "./api";
 
-  const exists = users.find((u) => u.email === user.email);
-  if (exists) throw new Error("User already exists");
-
-  users.push(user);
-  localStorage.setItem("users", JSON.stringify(users));
+// REGISTER
+export const registerUser = async (user) => {
+  console.log("Registering user with data:", user);
+  const res = await api.post("/auth/register", user);
+  console.log("Registration response:", res.data);
+  return res.data;
 };
 
-export const loginUser = ({ email, password }) => {
-  const users = JSON.parse(localStorage.getItem("users")) || [];
-
-  const user = users.find(
-    (u) => u.email === email && u.password === password
-  ); 
-
-  if (!user){
-    throw new Error("Invalid email or password");
+// LOGIN
+export const loginUser = async ({ email, password }) => {
+  console.log("Logging in with email:", email);
+  const res = await api.post("/auth/login", { email, password });
+  console.log("Login response:", res);
+  // optional but very useful
+  if (res.data?.token) {
+    localStorage.setItem("token", res.data.token);
+    console.log("Token stored in localStorage:", res.data.token);
+    localStorage.setItem("currentUser", JSON.stringify(res.data.user));
   }
 
-  localStorage.setItem("token", "local_auth_token");
-  localStorage.setItem("currentUser", JSON.stringify(user));
+  return res.data;
 };
 
+// LOGOUT
 export const logoutUser = () => {
+  console.log("Logging out user");
   localStorage.removeItem("token");
   localStorage.removeItem("currentUser");
+  return true; // helpful for UI logic
 };
 
+// AUTH CHECK
 export const isAuthenticated = () => {
-  return !!localStorage.getItem("token");
+  console.log("Checking authentication status");
+  console.log(Boolean(localStorage.getItem("token")));
+  return Boolean(localStorage.getItem("token"));
 };

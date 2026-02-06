@@ -3,18 +3,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../utils/auth";
 
 const Register = () => {
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      registerUser({ name, email, password });
+      await registerUser({ name: username, email, password });
       navigate("/login");
     } catch (err) {
-      alert(err.message);
+      alert(err.response?.data?.message || "Registration failed");
     }
   };
 
@@ -25,14 +25,15 @@ const Register = () => {
 
         <input
           placeholder="Name"
-          className="w-full p-2 mb-4 border rounded input-field"
-          onChange={(e) => setName(e.target.value)}
+          className="w-full p-2 mb-4 border rounded"
+          onChange={(e) => setUsername(e.target.value)}
           required
         />
 
         <input
+          type="email"
           placeholder="Email"
-          className="w-full p-2 mb-4 border rounded input-field"
+          className="w-full p-2 mb-4 border rounded"
           onChange={(e) => setEmail(e.target.value)}
           required
         />
@@ -40,17 +41,20 @@ const Register = () => {
         <input
           type="password"
           placeholder="Password"
-          className="w-full p-2 mb-4 border rounded input-field"
+          className="w-full p-2 mb-4 border rounded"
           onChange={(e) => setPassword(e.target.value)}
           required
         />
 
-        <button className="w-full py-2 mt-6 text-white bg-blue-600 rounded btn">
+        <button className="w-full py-2 mt-6 text-white bg-blue-600 rounded">
           Register
         </button>
 
         <p className="mt-4 text-center">
-          Already registered? <Link to="/login" className="text-blue-600">Login</Link>
+          Already registered?{" "}
+          <Link to="/login" className="text-blue-600">
+            Login
+          </Link>
         </p>
       </form>
     </div>
