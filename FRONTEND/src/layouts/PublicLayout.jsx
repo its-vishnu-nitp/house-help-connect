@@ -4,11 +4,13 @@ import Footer from "../components/Footer";
 
 const PublicLayout = () => {
   return (
-    <>
+    <div className="flex flex-col min-h-screen bg-surface">
       <Header />
-      <Outlet />
+      <main className="flex-grow">
+        <Outlet />
+      </main>
       <Footer />
-    </>
+    </div>
   );
 };
 

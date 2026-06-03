@@ -1,8 +1,9 @@
 import { Navigate } from "react-router-dom";
-import { isAuthenticated } from "../utils/auth";
+import { authService } from "../services/auth.service";
 
 const ProtectedRoute = ({ children }) => {
-  return isAuthenticated() ? children : <Navigate to="/" />;
+  // We now use authService instead of the standalone isAuthenticated function
+  return authService.isAuthenticated() ? children : <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;
