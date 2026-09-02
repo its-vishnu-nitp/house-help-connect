@@ -1,26 +1,47 @@
 import React from 'react';
 
 const WorkerSidebar = ({ currentView, setCurrentView }) => {
-  const getButtonClass = (viewName) => {
-    const isActive = currentView === viewName;
-    return `p-3 rounded-xl transition-all duration-200 text-2xl focus:outline-none ${
-      isActive 
-        ? 'bg-brand-light text-brand ring-2 ring-brand/30 scale-110 shadow-sm' 
-        : 'text-ink-muted hover:bg-surface-border hover:scale-105'
-    }`;
-  };
+  const navItems = [
+    { id: 'home', icon: '🏠', label: 'Dashboard' },
+    { id: 'clients', icon: '👥', label: 'My Clients' },
+    { id: 'verification', icon: '🛡️', label: 'Verification' },
+  ];
 
   return (
-    <div className="fixed top-0 left-0 z-20 flex flex-col items-center w-16 h-screen pt-24 pb-6 border-r bg-surface-card border-surface-border shadow-modern md:w-20">
-      <div className="flex flex-col items-center flex-1 w-full space-y-8">
-        <button onClick={() => setCurrentView('home')} title="Job Feed & Earnings" className={getButtonClass('home')}>🏠</button>
-        <button onClick={() => setCurrentView('clients')} title="My Clients" className={getButtonClass('clients')}>👥</button>
-        <button onClick={() => setCurrentView('verification')} title="Background Verification" className={getButtonClass('verification')}>🛡️</button>
+    <aside className="fixed top-0 left-0 z-40 flex flex-col items-center w-20 h-screen pt-24 pb-8 border-r shadow-modern bg-surface-card md:w-24 border-surface-border">
+      <nav className="flex flex-col flex-1 w-full gap-6 px-4 mt-2">
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setCurrentView(item.id)}
+            title={item.label}
+            className={`relative flex items-center justify-center w-full aspect-square rounded-2xl transition-all duration-300 group ${
+              currentView === item.id 
+                ? 'bg-brand text-white shadow-lg shadow-brand/30' 
+                : 'text-ink-muted hover:bg-brand-light hover:text-brand'
+            }`}
+          >
+            <span className="text-2xl transition-transform duration-300 group-hover:scale-110">
+              {item.icon}
+            </span>
+          </button>
+        ))}
+      </nav>
+
+      <div className="w-full px-4 mt-auto">
+        <button
+          onClick={() => setCurrentView('settings')}
+          title="Settings"
+          className={`flex items-center justify-center w-full aspect-square rounded-2xl transition-all duration-300 group ${
+            currentView === 'settings' 
+              ? 'bg-ink-main text-white shadow-lg shadow-ink-main/30' 
+              : 'text-ink-muted hover:bg-surface hover:text-ink-main'
+          }`}
+        >
+          <span className="text-2xl transition-transform duration-300 group-hover:rotate-90">⚙️</span>
+        </button>
       </div>
-      <div className="flex justify-center w-full mt-auto">
-        <button onClick={() => setCurrentView('settings')} title="Settings" className={getButtonClass('settings')}>⚙️</button>
-      </div>
-    </div>
+    </aside>
   );
 };
 

@@ -30,7 +30,7 @@
   
   /* A secondary button for less important actions */
   .btn-outline {
-    @apply px-6 py-2.5 transition-all duration-200 border-2 border-surface-border rounded-xl text-ink-main hover:border-brand hover:text-brand font-semibold bg-white flex items-center justify-center gap-2;
+    @apply px-6 py-2.5 transition-all duration-200 border-2 border-surface-border rounded-xl text-ink-main hover:border-brand hover:text-brand font-semibold bg-surface-card flex items-center justify-center gap-2;
   }
 
   /* Apply this to ALL your dashboard containers, booking cards, and profile panels */
@@ -55,4 +55,16 @@
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

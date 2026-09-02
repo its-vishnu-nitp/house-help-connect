@@ -33,7 +33,7 @@ const AuthHeader = () => {
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-white border-b border-surface-border shadow-modern">
+    <header className="sticky top-0 z-30 w-full bg-surface-card border-b border-surface-border shadow-modern">
       <div className="flex items-center justify-between px-6 py-4 mx-auto max-w-7xl">
         
         {/* LOGO */}
@@ -64,7 +64,7 @@ const AuthHeader = () => {
             </button>
 
             {isDropdownOpen && (
-              <div className="absolute right-0 w-64 py-2 mt-3 bg-white border border-surface-border shadow-modern rounded-2xl animate-fade-in">
+              <div className="absolute right-0 w-64 py-2 mt-3 bg-surface-card border border-surface-border shadow-modern rounded-2xl animate-fade-in">
                 <div className="px-4 py-3 mb-1 border-b border-surface-border">
                   <p className="text-sm font-bold truncate text-ink-main">{user?.name || "User Account"}</p>
                   <p className="text-xs text-ink-muted truncate mt-0.5">{user?.email || "user@service.com"}</p>

@@ -1,4 +1,3 @@
-// --- models/EmployerProfile.js ---
 import mongoose from "mongoose";
 
 const employerProfileSchema = new mongoose.Schema(
@@ -15,9 +14,8 @@ const employerProfileSchema = new mongoose.Schema(
         ref: "HelperProfile",
       }
     ],
-    familySize: { type: Number },
-    address: { type: String },
-    totalSpent: { type: Number, default: 0 }, // Matches the totalSpent in mockData
+    familySize: { type: Number, min: 1 },
+    totalSpent: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

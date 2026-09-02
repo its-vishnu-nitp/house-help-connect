@@ -21,36 +21,57 @@ const Login = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-surface">
-      <form onSubmit={handleLogin} className="p-8 w-96 modern-card">
-        <h2 className="mb-6 text-2xl text-center">Login to HHC</h2>
+    <div className="flex items-center justify-center min-h-[85vh] bg-surface px-6 font-sans">
+      <div className="w-full max-w-md p-10 bg-surface-card rounded-[2rem] shadow-modern border border-surface-BORDER">
+        <div className="mb-8 text-center">
+          <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 text-3xl text-brand bg-brand-LIGHT rounded-2xl">
+            👋
+          </div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-ink-MAIN">Welcome Back</h2>
+          <p className="mt-2 text-ink-MUTED">Sign in to your HHC account</p>
+        </div>
 
-        <input
-          type="email"
-          placeholder="Email Address"
-          value={email}
-          className="w-full p-3 mb-4 border outline-none rounded-xl border-surface-border focus:ring-2 focus:ring-brand bg-surface"
-          onChange={(e) => { setEmail(e.target.value); setError(""); }}
-          required
-        />
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <input
+              type="email"
+              placeholder="Email Address"
+              value={email}
+              className="w-full p-4 transition-all border outline-none bg-surface border-surface-BORDER rounded-2xl text-slate-700 focus:bg-surface-card focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              required
+            />
+          </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          className="w-full p-3 mb-4 border outline-none rounded-xl border-surface-border focus:ring-2 focus:ring-brand bg-surface"
-          onChange={(e) => { setPassword(e.target.value); setError(""); }}
-          required
-        />
+          <div>
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              className="w-full p-4 transition-all border outline-none bg-surface border-surface-BORDER rounded-2xl text-slate-700 focus:bg-surface-card focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              required
+            />
+          </div>
 
-        {error && <p className="mb-4 text-sm text-center text-status-error">{error}</p>}
+          {error && (
+            <div className="p-3 text-center border border-red-100 bg-red-50 rounded-xl">
+              <p className="text-sm font-semibold text-red-600">{error}</p>
+            </div>
+          )}
 
-        <button className="w-full btn-brand">Login securely</button>
+          <button className="w-full py-4 mt-4 text-lg font-bold text-white transition-all duration-300 bg-brand shadow-lg hover:bg-brand-DARK rounded-2xl shadow-blue-600/30 hover:-translate-y-1">
+            Login Securely
+          </button>
 
-        <p className="mt-6 text-sm text-center">
-          New here? <Link to="/join" className="font-semibold text-brand hover:underline">Create an account</Link>
-        </p>
-      </form>
+          <p className="mt-8 font-medium text-center text-ink-MUTED">
+            New here?{" "}
+            <Link to="/join" className="font-bold text-brand hover:underline">
+              Create an account
+            </Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 };

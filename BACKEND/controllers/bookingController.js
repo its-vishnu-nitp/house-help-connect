@@ -1,115 +1,164 @@
-// --- controllers/bookingController.js ---
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
+import AppError from "../utils/AppError.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
-// Utility to generate a unique booking ID (like BKG-8890)
-const generateBookingId = () => {
-  return `BKG-${Math.floor(1000 + Math.random() * 9000)}`;
-};
+/**
+ * Utility function to generate a readable, unique booking ID (e.g., BKG-1234).
+ */
+const generateBookingId = () => `BKG-${Math.floor(1000 + Math.random() * 9000)}`;
 
-// @desc    Create a new booking
-// @route   POST /api/bookings
-// @access  Private (Clients only)
-export const createBooking = async (req, res) => {
+/**
+ * Creates a new booking request.
+ * Called when a client requests a service from a professional worker.
+ */
+/**
+ * Creates a new booking request.
+ * Called when a client requests a service from a professional worker.
+ */
+export const createBooking = asyncHandler(async (req, res, next) => {
+  console.log(`🟡 [BOOKING] Create endpoint hit! Client ID: ${req.user.id} requesting Pro ID: ${req.body.professionalId}`);
+  console.log("🟡 [DEBUG] Received req.body:", req.body);
+
+  if (req.user.role !== "client") {
+    console.log("🔴 [BOOKING] Create FAILED: Non-client attempted to book.");
+    return next(new AppError("Only clients can create bookings", 403));
+  }
+
+  // Safely extract from either naming convention
+  const {
+    professionalId,
+    service,
+    serviceCategory,
+    date,
+    time,
+    notes,
+    basePrice,
+    hourlyRate
+  } = req.body;
+
+  const targetService = service || serviceCategory;
+  // Calculate a valid non-zero base price if hourlyRate is passed or default
+  const numRate = Number(hourlyRate) || 0;
+  const targetPrice = basePrice !== undefined && basePrice > 0 ? Number(basePrice) : (numRate > 0 ? numRate * 2 : 500);
+
+  if (!professionalId || !targetService || !date || !time) {
+    console.log("🔴 [BOOKING] Create FAILED: Missing required details.");
+    return next(new AppError("Please provide all required booking details (professional, service, date, time)", 400));
+  }
+
   try {
-    // Ensure only clients can create bookings
-    if (req.user.role !== "client") {
-      return res.status(403).json({ message: "Only clients can create bookings" });
+    const professional = await User.findById(professionalId);
+    if (!professional || professional.role !== "worker") {
+      console.log("🔴 [BOOKING] Create FAILED: Invalid professional targeted.");
+      return next(new AppError("Invalid professional selected", 404));
     }
-
-    const { professionalId, service, date, time, basePrice } = req.body;
 
     const booking = await Booking.create({
       bookingId: generateBookingId(),
       client: req.user.id,
       professional: professionalId,
-      service,
+      service: targetService,
       date,
       time,
-      pricing: { basePrice },
-      // Defaults to 'upcoming' and 'pending_pro' based on our schema
+      notes: notes || "",
+      pricing: { basePrice: targetPrice, tip: 0 },
+      status: "upcoming",
+      scheduleStatus: "pending_pro" // Matches your Booking model enum
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Booking requested successfully",
-      booking,
-    });
+    console.log(`🟢 [BOOKING] Create SUCCESS! Booking ID: ${booking.bookingId} generated.`);
+    res.status(201).json({ success: true, message: "Booking requested successfully", booking });
   } catch (error) {
-    console.error("Create Booking Error:", error);
-    res.status(500).json({ message: "Server error creating booking" });
+    console.error("🔴 [BOOKING] Create FAILED with server error:", error.message);
+    return next(error);
   }
-};
-
-// @desc    Get all bookings for the logged-in user
-// @route   GET /api/bookings
-// @access  Private
-export const getMyBookings = async (req, res) => {
+});
+/**
+ * Retrieves all bookings associated with the currently logged-in user.
+ * Adapts the query automatically based on whether the user is a client or worker.
+ */
+export const getMyBookings = asyncHandler(async (req, res, next) => {
+  console.log(`🟡 [BOOKING] Fetch all endpoint hit! Fetching for User ID: ${req.user.id}, Role: ${req.user.role}`);
+  const { role, id } = req.user;
+  
   try {
-    const { role, id } = req.user;
-    let query = {};
-
-    // Dynamically query based on who is asking
-    if (role === "client") {
-      query = { client: id };
-    } else if (role === "worker") {
-      query = { professional: id };
-    } else {
-      return res.status(403).json({ message: "Invalid user role" });
-    }
+    const query = role === "client" ? { client: id } : { professional: id };
 
     const bookings = await Booking.find(query)
-      .populate("client", "name profilePicture") // Get basic client info
-      .populate("professional", "name profilePicture") // Get basic pro info
+      .populate("client", "name")
+      .populate("professional", "name")
       .sort("-createdAt");
 
-    res.status(200).json({
-      success: true,
-      count: bookings.length,
-      bookings,
-    });
+    console.log(`🟢 [BOOKING] Fetch SUCCESS! Found ${bookings.length} jobs.`);
+    res.status(200).json({ success: true, count: bookings.length, bookings });
   } catch (error) {
-    console.error("Fetch Bookings Error:", error);
-    res.status(500).json({ message: "Server error fetching bookings" });
+    console.error("🔴 [BOOKING] Fetch all FAILED:", error.message);
+    return next(error);
   }
-};
+});
 
-// @desc    Update booking schedule status (e.g., Pro confirms the time)
-// @route   PUT /api/bookings/:id/status
-// @access  Private
-export const updateBookingStatus = async (req, res) => {
+/**
+ * Retrieves the details of a single specific booking by its MongoDB ObjectId.
+ * Includes basic authorization to ensure only the involved client or professional can view it.
+ */
+export const getBookingById = asyncHandler(async (req, res, next) => {
+  console.log(`🟡 [BOOKING] Fetch single endpoint hit! Fetching Booking ObjectId: ${req.params.id}`);
+  
   try {
-    const { scheduleStatus, status, paymentStatus } = req.body;
-    const bookingId = req.params.id;
-
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(req.params.id)
+      .populate("client", "name email")
+      .populate("professional", "name email");
 
     if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+      console.log("🔴 [BOOKING] Fetch single FAILED: Booking not found.");
+      return next(new AppError("Booking not found", 404));
     }
 
-    // Security: Ensure the user modifying the booking is either the client or the pro involved
-    if (
-      booking.client.toString() !== req.user.id &&
-      booking.professional.toString() !== req.user.id
-    ) {
-      return res.status(403).json({ message: "Not authorized to update this booking" });
+    // Security: Only allow the involved client or professional to view it
+    if (booking.client._id.toString() !== req.user.id && booking.professional._id.toString() !== req.user.id) {
+      console.log(`🔴 [BOOKING] Fetch single FAILED: User ${req.user.id} unauthorized to view this booking.`);
+      return next(new AppError("Not authorized to view this booking", 403));
     }
 
-    // Update only the fields provided
+    console.log(`🟢 [BOOKING] Fetch single SUCCESS! Returned data for booking ID: ${booking.bookingId}`);
+    res.status(200).json({ success: true, booking });
+  } catch (error) {
+    console.error("🔴 [BOOKING] Fetch single FAILED:", error.message);
+    return next(error);
+  }
+});
+
+/**
+ * Updates the state/status of an existing booking.
+ * Used for accepting, completing, or canceling a job.
+ */
+export const updateBookingStatus = asyncHandler(async (req, res, next) => {
+  console.log(`🟡 [BOOKING] Update status endpoint hit! Booking ObjectId: ${req.params.id}`);
+  const { scheduleStatus, status } = req.body;
+  
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      console.log("🔴 [BOOKING] Update FAILED: Booking not found.");
+      return next(new AppError("Booking not found", 404));
+    }
+
+    if (booking.client.toString() !== req.user.id && booking.professional.toString() !== req.user.id) {
+      console.log(`🔴 [BOOKING] Update FAILED: User ${req.user.id} unauthorized to update.`);
+      return next(new AppError("Not authorized to update this booking", 403));
+    }
+
     if (scheduleStatus) booking.scheduleStatus = scheduleStatus;
     if (status) booking.status = status;
-    if (paymentStatus) booking.paymentStatus = paymentStatus;
 
     await booking.save();
 
-    res.status(200).json({
-      success: true,
-      message: "Booking updated successfully",
-      booking,
-    });
+    console.log(`🟢 [BOOKING] Update SUCCESS! Booking ${booking.bookingId} updated to Status: ${status || 'N/A'}, Schedule: ${scheduleStatus || 'N/A'}`);
+    res.status(200).json({ success: true, message: "Booking updated", booking });
   } catch (error) {
-    console.error("Update Booking Error:", error);
-    res.status(500).json({ message: "Server error updating booking" });
+    console.error("🔴 [BOOKING] Update FAILED:", error.message);
+    return next(error);
   }
-};
+});

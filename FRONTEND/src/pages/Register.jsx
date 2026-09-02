@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { authService } from "../services/auth.service"; // Uses our new service layer
+import { authService } from "../services/auth.service";
 
 const Register = () => {
   const [username, setUsername] = useState("");
@@ -15,7 +15,7 @@ const Register = () => {
   useEffect(() => {
     const selectedRole = searchParams.get("role");
     if (!selectedRole) {
-      navigate("/join"); 
+      navigate("/join");
     } else {
       setRole(selectedRole);
     }
@@ -24,9 +24,7 @@ const Register = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
-
     try {
-      // The component simply asks the service to register the user
       await authService.register({ name: username, email, password, role });
       navigate("/dashboard");
     } catch (err) {
@@ -35,49 +33,59 @@ const Register = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-surface">
-      <form onSubmit={handleRegister} className="p-8 w-96 modern-card">
-        <h2 className="mb-2 text-2xl text-center">Create Account</h2>
-        <p className="mb-6 text-sm text-center capitalize text-ink-muted">
-          Joining as a {role}
-        </p>
+    <div className="flex items-center justify-center min-h-[85vh] bg-surface px-6 font-sans py-12">
+      <div className="w-full max-w-md p-10 bg-surface-card rounded-[2rem] shadow-modern border border-surface-BORDER">
+        <div className="mb-8 text-center">
+          <h2 className="mb-3 text-3xl font-extrabold tracking-tight text-ink-MAIN">Create Account</h2>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100">
+            <span className="text-sm font-medium text-ink-MUTED">Joining as a</span>
+            <span className={`text-sm font-bold uppercase tracking-wide ${role === 'client' ? 'text-brand' : 'text-indigo-600'}`}>
+              {role}
+            </span>
+          </div>
+        </div>
 
-        <input
-          placeholder="Full Name"
-          className="w-full p-3 mb-4 border outline-none rounded-xl border-surface-border focus:ring-2 focus:ring-brand bg-surface"
-          onChange={(e) => { setUsername(e.target.value); setError(""); }}
-          required
-        />
+        <form onSubmit={handleRegister} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Full Name"
+            className="w-full p-4 transition-all border outline-none bg-surface border-surface-BORDER rounded-2xl text-slate-700 focus:bg-surface-card focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+            onChange={(e) => { setUsername(e.target.value); setError(""); }}
+            required
+          />
+          <input
+            type="email"
+            placeholder="Email Address"
+            className="w-full p-4 transition-all border outline-none bg-surface border-surface-BORDER rounded-2xl text-slate-700 focus:bg-surface-card focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full p-4 transition-all border outline-none bg-surface border-surface-BORDER rounded-2xl text-slate-700 focus:bg-surface-card focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+            onChange={(e) => { setPassword(e.target.value); setError(""); }}
+            required
+          />
 
-        <input
-          type="email"
-          placeholder="Email Address"
-          className="w-full p-3 mb-4 border outline-none rounded-xl border-surface-border focus:ring-2 focus:ring-brand bg-surface"
-          onChange={(e) => { setEmail(e.target.value); setError(""); }}
-          required
-        />
+          {error && (
+            <div className="p-3 text-center border border-red-100 bg-red-50 rounded-xl">
+              <p className="text-sm font-semibold text-red-600">{error}</p>
+            </div>
+          )}
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full p-3 mb-4 border outline-none rounded-xl border-surface-border focus:ring-2 focus:ring-brand bg-surface"
-          onChange={(e) => { setPassword(e.target.value); setError(""); }}
-          required
-        />
+          <button className="w-full py-4 mt-6 text-lg font-bold text-white transition-all duration-300 bg-brand shadow-lg hover:bg-brand-DARK rounded-2xl shadow-blue-600/30 hover:-translate-y-1">
+            Register Now
+          </button>
 
-        {error && <p className="mb-4 text-sm text-center text-status-error">{error}</p>}
-
-        <button className="w-full mt-2 btn-brand">
-          Register
-        </button>
-
-        <p className="mt-6 text-sm text-center">
-          Already registered?{" "}
-          <Link to="/login" className="font-semibold text-brand hover:underline">
-            Login
-          </Link>
-        </p>
-      </form>
+          <p className="mt-6 font-medium text-center text-ink-MUTED">
+            Already registered?{" "}
+            <Link to="/login" className="font-bold text-brand hover:underline">
+              Login here
+            </Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 };

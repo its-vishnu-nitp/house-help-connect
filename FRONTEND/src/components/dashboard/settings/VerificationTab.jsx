@@ -94,7 +94,7 @@ const VerificationTab = () => {
             <label className="block mb-2 text-sm font-semibold text-center text-ink-muted">Enter 6-Digit OTP</label>
             <input type="text" maxLength="6" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="------" className="w-full px-4 py-4 mb-2 text-3xl tracking-[1em] text-center border rounded-xl border-surface-border focus:ring-2 focus:ring-brand outline-none bg-surface" />
             {error && <p className="mb-4 text-sm text-center text-status-error">{error}</p>}
-            <button type="submit" disabled={isVerifying} className="w-full mt-4 btn-brand !bg-status-success hover:!bg-emerald-600">{isVerifying ? 'Verifying...' : 'Verify & Continue'}</button>
+            <button type="submit" disabled={isVerifying} className="w-full mt-4 btn-brand !bg-status-success hover:!bg-brand">{isVerifying ? 'Verifying...' : 'Verify & Continue'}</button>
           </form>
         </div>
       )}

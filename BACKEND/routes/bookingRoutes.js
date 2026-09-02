@@ -1,19 +1,15 @@
-// --- routes/bookingRoutes.js ---
-import { Router } from "express";
-import { 
-  createBooking, 
-  getMyBookings, 
-  updateBookingStatus 
-} from "../controllers/bookingController.js";
-import { protect } from "../middlewares/authMiddleware.js";
+import express from "express";
+import { protect, requireAadhaar } from "../middlewares/authMiddleware.js";
+import { createBooking, getMyBookings, updateBookingStatus, getBookingById } from "../controllers/bookingController.js";
 
-const router = Router();
+const router = express.Router();
 
-// All booking routes require the user to be logged in
-router.use(protect);
+// Protected by Auth AND Aadhaar KYC
+router.post("/", protect, requireAadhaar, createBooking);
+router.put("/:id/status", protect, requireAadhaar, updateBookingStatus);
 
-router.post("/", createBooking);
-router.get("/", getMyBookings);
-router.put("/:id/status", updateBookingStatus);
+// Just needs Auth to view
+router.get("/", protect, getMyBookings);
+router.get("/:id", protect, getBookingById);
 
 export default router;

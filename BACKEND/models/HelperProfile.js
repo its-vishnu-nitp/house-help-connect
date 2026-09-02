@@ -1,4 +1,3 @@
-// --- models/HelperProfile.js ---
 import mongoose from "mongoose";
 
 const helperProfileSchema = new mongoose.Schema(
@@ -9,29 +8,18 @@ const helperProfileSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    services: {
+      type: [String],
+      default: ["Deep Cleaning"],
+    },
     serviceCategory: {
       type: String,
-      enum: [
-        "Deep Cleaning", "Daily Cooking", "Babysitting", 
-        "Plumbing", "Electrical Repair", "Carpentry", 
-        "Laundry & Ironing", "Pest Control"
-      ],
-      required: true,
+      default: "Deep Cleaning",
     },
-    rating: { type: Number, default: 0, min: 0, max: 5 },
-    totalReviews: { type: Number, default: 0 },
-    hourlyRate: { type: Number, required: true },
+    hourlyRate: { type: Number, default: 250 },
+    experience: { type: Number, default: 1 },
+    bio: { type: String, maxLength: 1000 },
     isAvailable: { type: Boolean, default: true },
-    hiredCount: { type: Number, default: 0 }, // Tracks how many times they've been booked
-    skills: [{ type: String }],
-    location: {
-      address: String,
-      city: String,
-      coordinates: {
-        lat: Number,
-        lng: Number,
-      }
-    }
   },
   { timestamps: true }
 );

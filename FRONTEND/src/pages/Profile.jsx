@@ -13,23 +13,24 @@ const Profile = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen px-6 py-12 bg-surface">
+    /* Changed py-12 to pt-32 pb-12 to clear the fixed top header */
+    <div className="min-h-screen px-6 pt-32 pb-12 font-sans bg-surface">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl text-ink-main">Account Profile Overview</h1>
+          <h1 className="text-3xl font-extrabold text-ink-main">Account Profile Overview</h1>
           <button onClick={() => navigate("/dashboard")} className="btn-outline !py-2 !text-sm">
             ← Back to Canvas Workspace
           </button>
         </div>
 
-        <div className="flex flex-col items-center gap-8 p-8 modern-card md:flex-row md:items-start">
+        <div className="flex flex-col items-center gap-8 p-8 modern-card md:flex-row md:items-start bg-surface-card border border-surface-border rounded-[2rem] shadow-modern">
           <div className="flex items-center justify-center w-24 h-24 text-3xl font-bold shadow-inner rounded-2xl bg-brand-light text-brand shrink-0">
             {user.name?.charAt(0).toUpperCase()}
           </div>
           
           <div className="w-full space-y-6">
             <div>
-              <h2 className="text-2xl text-ink-main">{user.name}</h2>
+              <h2 className="text-2xl font-bold text-ink-main">{user.name}</h2>
               <p className="text-sm font-semibold text-brand uppercase tracking-wider mt-0.5">{user.role} Account Context</p>
             </div>
 

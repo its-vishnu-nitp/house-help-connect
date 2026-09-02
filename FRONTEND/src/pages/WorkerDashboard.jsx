@@ -3,7 +3,7 @@ import WorkerSidebar from '../components/dashboard/WorkerSidebar';
 import WorkerHomeFeed from '../components/dashboard/WorkerHomeFeed';
 import WorkerClientsView from '../components/dashboard/WorkerClientsView';
 import WorkerVerificationTab from '../components/dashboard/WorkerVerificationTab';
-import SettingsView from '../components/dashboard/SettingsView'; 
+import SettingsView from '../components/dashboard/SettingsView';
 
 const WorkerDashboard = ({ user }) => {
   const [currentView, setCurrentView] = useState('home');
@@ -19,10 +19,15 @@ const WorkerDashboard = ({ user }) => {
   };
 
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex min-h-screen font-sans bg-surface">
       <WorkerSidebar currentView={currentView} setCurrentView={setCurrentView} />
-      <div className="flex-1 w-full max-w-6xl p-6 pb-10 pl-20 mx-auto md:p-8 md:pl-28">
-        {renderView()}
+      
+      {/* 1. Outer container handling the left sidebar offset */}
+      <div className="flex-1 w-full ml-20 md:ml-24">
+        {/* 2. Main content container centered with auto margins */}
+        <main className="w-full p-6 pb-12 mx-auto transition-all duration-300 max-w-7xl md:p-10 pt-28 md:pt-32">
+          {renderView()}
+        </main>
       </div>
     </div>
   );
