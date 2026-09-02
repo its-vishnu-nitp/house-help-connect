@@ -14,16 +14,33 @@ dotenv.config();
 
 const app = express();
 
-// Middlewares
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  credentials: true, // IMPORTANT: This allows cookies (JWT) to be sent across origins
-}));
+// Allowed Origins for CORS
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://house-help-connect-one.vercel.app",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+// CORS configuration
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, Postman)
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true, // Allows cookies / authorization headers across origins
+  })
+);
+
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health Check
+// Health Check Endpoint
 app.get("/", (req, res) => {
   return res.json({ message: "🏡 House Help Connect API is running (MVP Mode)..." });
 });
@@ -45,10 +62,14 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5500;
 
 // Start Server AFTER connecting to DB
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server is running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(
+        `🚀 Server is running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`
+      );
+    });
+  })
+  .catch((error) => {
+    console.error("Failed to connect to Database. Server not started.", error);
   });
-}).catch((error) => {
-  console.error("Failed to connect to Database. Server not started.", error);
-});
