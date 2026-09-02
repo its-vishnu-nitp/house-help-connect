@@ -26,7 +26,7 @@ const generateTokenAndRespond = (user, statusCode, res, message) => {
 
   user.password = undefined;
   
-  console.log(`🔑 [AUTH] Token generated & cookie set for user ID: ${user._id}`);
+  ////////console.log(`🔑 [AUTH] Token generated & cookie set for user ID: ${user._id}`);
 
   return res.status(statusCode).json({
     success: true,
@@ -48,18 +48,18 @@ const generateTokenAndRespond = (user, statusCode, res, message) => {
  * either an EmployerProfile or HelperProfile depending on the role.
  */
 export const register = asyncHandler(async (req, res, next) => {
-  console.log(`🟡 [AUTH] Register endpoint hit! Attempting to register email: ${req.body.email} as ${req.body.role}`);
+  //////console.log(`🟡 [AUTH] Register endpoint hit! Attempting to register email: ${req.body.email} as ${req.body.role}`);
   
   let { name, email, password, role } = req.body;
 
   if (!name || !email || !password || !role) {
-    console.log("🔴 [AUTH] Register FAILED: Missing required fields");
+    //////console.log("🔴 [AUTH] Register FAILED: Missing required fields");
     return next(new AppError("Name, email, password, and role are required", 400));
   }
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
-    console.log("🔴 [AUTH] Register FAILED: Email already exists");
+    //////console.log("🔴 [AUTH] Register FAILED: Email already exists");
     return next(new AppError("Email already exists", 409));
   }
 
@@ -92,7 +92,7 @@ export const register = asyncHandler(async (req, res, next) => {
     await session.commitTransaction();
     session.endSession();
 
-    console.log(`🟢 [AUTH] Register SUCCESS! User ${email} created successfully.`);
+    //////console.log(`🟢 [AUTH] Register SUCCESS! User ${email} created successfully.`);
     generateTokenAndRespond(newUser, 201, res, "User registration successful");
 
   } catch (error) {
@@ -108,22 +108,22 @@ export const register = asyncHandler(async (req, res, next) => {
  * Verifies the email and password, then issues a JWT token for session management.
  */
 export const login = asyncHandler(async (req, res, next) => {
-  console.log(`🟡 [AUTH] Login endpoint hit! Attempting login for email: ${req.body.email}`);
+  //////console.log(`🟡 [AUTH] Login endpoint hit! Attempting login for email: ${req.body.email}`);
   const { email, password } = req.body;
 
   if (!email || !password) {
-    console.log("🔴 [AUTH] Login FAILED: Missing email or password");
+    //////console.log("🔴 [AUTH] Login FAILED: Missing email or password");
     return next(new AppError("Email and password are required", 400));
   }
 
   const user = await User.findOne({ email }).select("+password");
   
   if (!user || !(await bcrypt.compare(password, user.password))) {
-    console.log("🔴 [AUTH] Login FAILED: Invalid credentials");
+    //////console.log("🔴 [AUTH] Login FAILED: Invalid credentials");
     return next(new AppError("Invalid email or password", 401));
   }
   
-  console.log(`🟢 [AUTH] Login SUCCESS! Token generated for: ${req.body.email}`);
+  //////console.log(`🟢 [AUTH] Login SUCCESS! Token generated for: ${req.body.email}`);
   generateTokenAndRespond(user, 200, res, "Login successful");
 });
 
@@ -132,7 +132,7 @@ export const login = asyncHandler(async (req, res, next) => {
  * Clears the HTTP-only JWT cookie across the entire domain to terminate the active session.
  */
 export const logout = (req, res) => {
-  console.log("🟡 [AUTH] Logout endpoint hit!");
+  //////console.log("🟡 [AUTH] Logout endpoint hit!");
 
   const cookieOptions = {
     httpOnly: true,
@@ -144,6 +144,6 @@ export const logout = (req, res) => {
 
   res.clearCookie("token", cookieOptions);
 
-  console.log("🟢 [AUTH] Logout SUCCESS! Cookie cleared.");
+  //////console.log("🟢 [AUTH] Logout SUCCESS! Cookie cleared.");
   return res.status(200).json({ success: true, message: "Logged out successfully" });
 };
