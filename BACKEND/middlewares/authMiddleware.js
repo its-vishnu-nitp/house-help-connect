@@ -4,8 +4,14 @@ import AppError from "../utils/AppError.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
 export const protect = asyncHandler(async (req, res, next) => {
-  // 1. Get token from cookies
-  const token = req.cookies?.token;
+  let token;
+
+  // 1. Get token from Headers OR Cookies
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  } else if (req.cookies?.token) {
+    token = req.cookies.token;
+  }
 
   if (!token) {
     return next(new AppError("You are not logged in! Please log in to get access.", 401));

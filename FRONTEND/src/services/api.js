@@ -1,9 +1,23 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // This tells Vite to use the Vercel variable in production, and localhost in development
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5500/api',
   withCredentials: true, 
 });
+
+// Add an interceptor to automatically attach the token to headers
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Pass token in the Authorization header
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default api;
