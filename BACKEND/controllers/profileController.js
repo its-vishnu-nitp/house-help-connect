@@ -19,13 +19,13 @@ import asyncHandler from "../utils/asyncHandler.js";
  */
 export const getUserProfile = asyncHandler(async (req, res, next) => {
   const userId = req.user.id || req.user._id;
-  console.log(`🟡 [PROFILE] Fetch profile hit! User ID: ${userId}, Role: ${req.user.role}`);
+  //console.log(`🟡 [PROFILE] Fetch profile hit! User ID: ${userId}, Role: ${req.user.role}`);
 
   try {
     const user = await User.findById(userId).select("-password");
 
     if (!user) {
-      console.log("🔴 [PROFILE] Fetch FAILED: User not found in database.");
+      //console.log("🔴 [PROFILE] Fetch FAILED: User not found in database.");
       return next(new AppError("User not found", 404));
     }
 
@@ -49,7 +49,7 @@ export const getUserProfile = asyncHandler(async (req, res, next) => {
       }
     }
 
-    console.log(`🟢 [PROFILE] Fetch SUCCESS! Profile loaded for ${user.email}`);
+    //console.log(`🟢 [PROFILE] Fetch SUCCESS! Profile loaded for ${user.email}`);
     
     // Convert to plain object and ensure phone is populated for frontend
     const userObj = user.toObject();
@@ -76,8 +76,8 @@ export const updateMyProfile = asyncHandler(async (req, res, next) => {
   const role = req.user.role;
   const { name, phone, phoneNumber, city, bio, hourlyRate, services, serviceCategory, experience } = req.body;
 
-  console.log(`🟡 [PROFILE] Update hit! User ID: ${userId}, Role: ${role}`);
-  console.log("🟡 [DEBUG] Update payload:", req.body);
+  //console.log(`🟡 [PROFILE] Update hit! User ID: ${userId}, Role: ${role}`);
+  //console.log("🟡 [DEBUG] Update payload:", req.body);
 
   try {
     // 1. Sanitize & Validate Phone Number (10 digits)
@@ -144,7 +144,7 @@ export const updateMyProfile = asyncHandler(async (req, res, next) => {
       );
     }
 
-    console.log(`🟢 [PROFILE] Update SUCCESS! Saved changes for user: ${updatedUser.name}`);
+    //console.log(`🟢 [PROFILE] Update SUCCESS! Saved changes for user: ${updatedUser.name}`);
 
     // Map phone back to user object for frontend consistency
     const userResponse = updatedUser.toObject();
@@ -172,7 +172,7 @@ export const searchWorkers = asyncHandler(async (req, res, next) => {
   const currentLimit = Math.max(1, parseInt(limit, 10));
   const skip = (currentPage - 1) * currentLimit;
 
-  console.log(`🟡 [PROFILE] Search workers hit! Category: "${category || 'Any'}", City: "${city || 'Any'}"`);
+  //console.log(`🟡 [PROFILE] Search workers hit! Category: "${category || 'Any'}", City: "${city || 'Any'}"`);
 
   try {
     let userQuery = { role: "worker", isActive: true };
