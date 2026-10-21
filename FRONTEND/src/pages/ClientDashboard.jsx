@@ -38,7 +38,6 @@ const ClientDashboard = ({ user }) => {
   const handleSearch = async (searchTerm) => {
     setIsSearching(true);
     try {
-      console.log(`🖥️ [FRONTEND] Searching for: "${searchTerm}"`);
       const workerRes = await profileService.searchWorkers(searchTerm, '', 1, 6);
       setProfessionals(workerRes.workers || []);
     } catch (err) {

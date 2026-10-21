@@ -7,34 +7,78 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Primary brand scale — deep teal/emerald (trust, reliability)
+        primary: {
+          50: '#EFFDF9',
+          100: '#C9FFF2',
+          200: '#93FCE4',
+          300: '#57F0D3',
+          400: '#22DAB9',
+          500: '#05BE9E',
+          600: '#029A82', // main brand / buttons
+          700: '#037B69', // hover states
+          800: '#066255',
+          900: '#075146',
+          950: '#022C27',
+        },
+        // Accent scale — warm amber (CTAs, highlights, ratings)
+        accent: {
+          50: '#FFFBEB',
+          100: '#FEF3C7',
+          200: '#FDE68A',
+          300: '#FCD34D',
+          400: '#FBBF24',
+          500: '#F59E0B', // main accent
+          600: '#D97706',
+          700: '#B45309',
+          800: '#92400E',
+          900: '#78350F',
+        },
+        // Legacy aliases — existing components use these token names;
+        // they now resolve to the new palette so the whole app re-skins consistently.
         brand: {
-          DEFAULT: '#8E4585', // Plum Magenta (Main brand actions, active states)
-          dark: '#75346D',    // Darker Plum (Hover states)
-          light: '#F7E8E8',   // Light Rose Tint (Icon backgrounds, badges)
-          accent: '#996666',  // Warm Muted Mauve (Secondary accents)
+          DEFAULT: '#029A82', // = primary-600
+          dark: '#037B69',    // = primary-700
+          light: '#C9FFF2',   // = primary-100 (icon backgrounds, badges)
+          accent: '#F59E0B',  // = accent-500
         },
         surface: {
-          DEFAULT: '#F8F3F3', // Soft Rose-Canvas (Visible contrast with white cards)
-          card: '#FFFFFF',    // Crisp White Cards
-          border: '#EADBD8',  // Soft divider border derived from #DCA1A1
+          DEFAULT: '#FAFAF9', // warm stone-50 canvas
+          card: '#FFFFFF',
+          border: '#E7E5E4',  // stone-200 dividers
         },
         ink: {
-          main: '#4A4A4A',    // Charcoal (Headings & body text)
-          muted: '#996666',   // Mauve Gray (Subtitles & secondary text)
+          main: '#1E293B',    // slate-800 headings & body
+          muted: '#64748B',   // slate-500 secondary text
         },
         status: {
-          success: '#10B981', 
-          warning: '#F59E0B', 
-          error: '#EF4444',   
-        }
+          success: '#059669',
+          warning: '#F59E0B',
+          error: '#E11D48',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        heading: ['Poppins', 'sans-serif'], 
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        heading: ['"Plus Jakarta Sans"', 'Inter', 'ui-sans-serif', 'sans-serif'],
       },
       boxShadow: {
-        'modern': '0 4px 20px -2px rgba(74, 74, 74, 0.08)', 
-      }
+        modern: '0 4px 24px -4px rgba(30, 41, 59, 0.08)',
+        soft: '0 2px 12px -2px rgba(30, 41, 59, 0.06)',
+      },
+      keyframes: {
+        'fade-in': {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'slide-down': {
+          '0%': { opacity: '0', transform: 'translateY(-100%)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.35s ease both',
+        'slide-down': 'slide-down 0.3s ease both',
+      },
     },
   },
   plugins: [],

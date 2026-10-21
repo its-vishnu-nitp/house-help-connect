@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { bookingService } from '../../services/booking.service';
+import { showToast } from '../Toast';
 
 const BookingsView = ({ bookings = [], onUpdateTip }) => {
   const [localBookings, setLocalBookings] = useState(bookings);
@@ -38,7 +39,7 @@ const BookingsView = ({ bookings = [], onUpdateTip }) => {
       );
     } catch (err) {
       console.error("Failed to cancel job", err);
-      alert("Failed to cancel the booking. Please try again.");
+      showToast('Failed to cancel the booking. Please try again.', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -78,7 +79,7 @@ const BookingsView = ({ bookings = [], onUpdateTip }) => {
           prev.map((b) => ((b._id === bookingId || b.id === bookingId) ? { ...b, paymentStatus: 'paid' } : b))
         );
         setSelectedPaymentJob(null);
-        alert(`Payment of ₹${job.calculatedTotal} received successfully!`);
+        showToast(`Payment of ₹${job.calculatedTotal} received successfully!`, 'success');
       } catch (err) {
         console.error("Payment failed", err);
       } finally {

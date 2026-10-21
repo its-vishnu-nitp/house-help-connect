@@ -91,8 +91,27 @@ const HomeFeed = ({ user, onSearch, professionals = [], isSearching, onBookWorke
         </h2>
         
         {isSearching ? (
-          <div className="flex items-center justify-center py-10">
-            <p className="text-lg font-semibold animate-pulse text-brand">Searching professionals...</p>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading professionals">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="p-6 border bg-surface-card rounded-3xl border-surface-border shadow-soft animate-pulse">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 rounded-2xl bg-surface-border/70"></div>
+                  <div className="flex-1">
+                    <div className="h-4 mb-2 rounded bg-surface-border/70 w-3/4"></div>
+                    <div className="h-3 rounded bg-surface-border/50 w-1/2"></div>
+                  </div>
+                </div>
+                <div className="flex gap-2 mb-4">
+                  <div className="h-6 rounded-full bg-surface-border/60 w-20"></div>
+                  <div className="h-6 rounded-full bg-surface-border/60 w-16"></div>
+                </div>
+                <div className="h-4 mb-5 rounded bg-surface-border/50 w-2/3"></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="h-10 rounded-xl bg-surface-border/60"></div>
+                  <div className="h-10 rounded-xl bg-surface-border/60"></div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : professionals.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

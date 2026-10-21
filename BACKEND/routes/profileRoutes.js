@@ -9,7 +9,6 @@ import {
 import { protect } from "../middlewares/authMiddleware.js";
 
 const router = Router();
-console.log("Profile routes loaded");
 
 // 1. PUBLIC ROUTES (Allow search & profile view without strict session lock)
 router.get("/search", searchWorkers);

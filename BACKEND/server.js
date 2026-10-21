@@ -50,12 +50,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/bookings", bookingRoutes);
 
-// Ignored Phase 2 Routes (Stubbed)
-// app.use("/api/reviews", reviewRoutes);
-// app.use("/api/messages", messageRoutes);
-// app.use("/api/notifications", notificationRoutes);
-// app.use("/api/payments", paymentRoutes);
-
 // Global Error Handler
 app.use(errorHandler);
 

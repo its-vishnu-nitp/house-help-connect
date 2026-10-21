@@ -1,48 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    /* Instantly gives the whole app a clean, modern background and crisp text */
-    @apply font-sans antialiased text-ink-muted bg-surface; 
+    @apply font-sans antialiased text-ink-muted bg-surface;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    /* Makes all headings punchy and high-contrast */
     @apply font-bold tracking-tight font-heading text-ink-main;
   }
 
   p {
     @apply leading-relaxed;
   }
+
+  ::selection {
+    @apply bg-primary-200 text-primary-900;
+  }
 }
 
 @layer components {
-  /* ==========================================
-     REUSABLE MODERN COMPONENTS
-     ========================================== */
-
-  /* The primary call-to-action button */
+  /* Primary call-to-action button (teal) */
   .btn-brand {
-    @apply px-6 py-2.5 text-white transition-all duration-200 bg-brand rounded-xl hover:bg-brand-dark font-semibold shadow-sm hover:shadow active:scale-95 flex items-center justify-center gap-2;
-  }
-  
-  /* A secondary button for less important actions */
-  .btn-outline {
-    @apply px-6 py-2.5 transition-all duration-200 border-2 border-surface-border rounded-xl text-ink-main hover:border-brand hover:text-brand font-semibold bg-surface-card flex items-center justify-center gap-2;
+    @apply px-6 py-2.5 text-white transition-all duration-200 bg-primary-600 rounded-xl hover:bg-primary-700 font-semibold shadow-sm hover:shadow active:scale-95 flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/30;
   }
 
-  /* Apply this to ALL your dashboard containers, booking cards, and profile panels */
+  /* Accent call-to-action button (warm amber) */
+  .btn-accent {
+    @apply px-6 py-2.5 text-white transition-all duration-200 bg-accent-500 rounded-xl hover:bg-accent-600 font-semibold shadow-sm hover:shadow active:scale-95 flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-accent-500/30;
+  }
+
+  /* Secondary button for less important actions */
+  .btn-outline {
+    @apply px-6 py-2.5 transition-all duration-200 border-2 border-surface-border rounded-xl text-ink-main hover:border-primary-600 hover:text-primary-700 font-semibold bg-surface-card flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/20;
+  }
+
+  /* Standard card used across dashboards and panels */
   .modern-card {
     @apply transition-shadow duration-300 border bg-surface-card border-surface-border rounded-2xl shadow-modern hover:shadow-md;
   }
-  
-  /* Beautiful pill badges for statuses (e.g., 'Completed', 'Active') */
+
+  /* Shared form input styling */
+  .input-field {
+    @apply w-full p-3.5 border outline-none rounded-xl border-surface-border bg-surface text-ink-main font-medium transition-all focus:bg-surface-card focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15;
+  }
+
+  /* Pill badges for statuses (e.g., 'Completed', 'Active') */
   .badge-success {
     @apply px-3 py-1 text-xs font-bold border rounded-full text-status-success border-status-success/30 bg-status-success/10;
   }
-  
+
   .badge-warning {
     @apply px-3 py-1 text-xs font-bold border rounded-full text-status-warning border-status-warning/30 bg-status-warning/10;
   }
@@ -57,7 +67,6 @@
   scrollbar-width: none;
 }
 
-
 /* Hide scrollbar for Chrome, Safari and Opera */
 *::-webkit-scrollbar {
   display: none;
@@ -65,6 +74,6 @@
 
 /* Hide scrollbar for IE, Edge and Firefox */
 * {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

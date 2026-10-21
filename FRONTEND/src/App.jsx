@@ -10,10 +10,14 @@ import RoleSelection from "./pages/RoleSelection";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicLayout from "./layouts/PublicLayout";
 import AuthHeader from "./components/AuthHeader";
+import ServerStatusBanner from "./components/ServerStatusBanner";
+import Toast from "./components/Toast";
 
 function App() {
   return (
     <BrowserRouter>
+      <ServerStatusBanner />
+      <Toast />
       <Routes>
         {/* PUBLIC ROUTES (With Header, Body Content, and Footer) */}
         <Route element={<PublicLayout />}>
