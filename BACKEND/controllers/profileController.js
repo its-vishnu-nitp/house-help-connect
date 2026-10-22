@@ -141,7 +141,9 @@ export const searchWorkers = asyncHandler(async (req, res) => {
   const currentLimit = Math.max(1, parseInt(limit, 10));
   const skip = (currentPage - 1) * currentLimit;
 
-  const userQuery = { role: "worker", isActive: true };
+  // Only Aadhaar-verified workers are visible in public search — the
+  // verification flag is the platform's trust gate, not just a badge.
+  const userQuery = { role: "worker", isActive: true, isAadhaarVerified: true };
   if (city && city.trim() !== "") {
     userQuery["location.city"] = new RegExp(city.trim(), "i");
   }
@@ -160,7 +162,8 @@ export const searchWorkers = asyncHandler(async (req, res) => {
   const totalWorkers = await HelperProfile.countDocuments(profileQuery);
 
   const workers = await HelperProfile.find(profileQuery)
-    .populate("userId", "name profilePicture bio phoneNumber phone location")
+    // PUBLIC route: never expose phoneNumber / email / aadhaarNumber here.
+    .populate("userId", "name profilePicture location.city")
     .sort("-rating")
     .skip(skip)
     .limit(currentLimit);
@@ -179,7 +182,8 @@ export const searchWorkers = asyncHandler(async (req, res) => {
 export const getWorkerProfileById = asyncHandler(async (req, res, next) => {
   const workerProfile = await HelperProfile.findOne({ userId: req.params.id }).populate(
     "userId",
-    "name profilePicture bio location createdAt phone phoneNumber"
+    // PUBLIC route: public-safe fields only (no phone / email / aadhaar).
+    "name profilePicture location createdAt"
   );
 
   if (!workerProfile) {
@@ -187,6 +191,72 @@ export const getWorkerProfileById = asyncHandler(async (req, res, next) => {
   }
 
   res.status(200).json({ success: true, profile: workerProfile });
+});
+
+/**
+ * Demo e-KYC: records the user's Aadhaar number and marks the account
+ * verified. NOTE: this does NOT call the UIDAI API — it persists the number
+ * and flag so the booking gate (requireAadhaar) and the UI have a real,
+ * durable verification state instead of a fake client-side one.
+ */
+export const verifyAadhaar = asyncHandler(async (req, res, next) => {
+  const userId = req.user.id || req.user._id;
+  const digits = String(req.body.aadhaarNumber || "").replace(/\D/g, "");
+
+  if (!/^\d{12}$/.test(digits)) {
+    return next(new AppError("Please enter a valid 12-digit Aadhaar number", 400));
+  }
+
+  // aadhaarNumber is unique+sparse on the User schema — don't let one
+  // number verify two accounts.
+  const clash = await User.findOne({ aadhaarNumber: digits, _id: { $ne: userId } });
+  if (clash) {
+    return next(new AppError("This Aadhaar number is already linked to another account", 409));
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: { aadhaarNumber: digits, isAadhaarVerified: true } },
+    { new: true, runValidators: true }
+  ).select("-password");
+
+  if (!user) {
+    return next(new AppError("User not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Aadhaar verification recorded successfully",
+    user: toUserResponse(user),
+  });
+});
+
+/**
+ * Toggles a worker's availability. Search only returns workers whose
+ * HelperProfile.isAvailable is true, so this is how a professional
+ * pauses / resumes taking new bookings.
+ */
+export const updateAvailability = asyncHandler(async (req, res, next) => {
+  if (req.user.role !== "worker") {
+    return next(new AppError("Only professionals can change availability", 403));
+  }
+
+  const { isAvailable } = req.body;
+  if (typeof isAvailable !== "boolean") {
+    return next(new AppError("isAvailable must be true or false", 400));
+  }
+
+  const profile = await HelperProfile.findOneAndUpdate(
+    { userId: req.user.id },
+    { $set: { isAvailable } },
+    { new: true }
+  );
+
+  if (!profile) {
+    return next(new AppError("Professional profile not found", 404));
+  }
+
+  res.status(200).json({ success: true, isAvailable: profile.isAvailable });
 });
 
 /** Add or remove a worker from a client's "savedProfessionals" list. */

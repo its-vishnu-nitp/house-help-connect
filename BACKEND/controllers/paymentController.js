@@ -1,7 +1,16 @@
 /**
  * ============================================================================
  * FILE: paymentController.js
- * PURPOSE: Handles creating payment orders and verifying successful transactions.
+ * PURPOSE: Read-only payment views — my payment history and a single
+ *          booking's receipt.
+ *
+ * SAFETY NOTE: this module deliberately has NO create-order / verify
+ * endpoints. The old mock versions trusted a client-supplied amount and
+ * let anyone who knew a transaction ID mark a booking paid — they were
+ * removed, not mounted. The one and only way money-state changes is the
+ * guarded demo flow: POST /api/bookings/:id/pay (payBooking), which is
+ * client-only, once-only, confirmation-gated and computes the amount
+ * server-side.
  * MODELS USED: Payment, Booking
  * ============================================================================
  */
@@ -10,75 +19,46 @@ import Payment from "../models/Payment.js";
 import Booking from "../models/Booking.js";
 import AppError from "../utils/AppError.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import crypto from "crypto"; // Built-in Node module for generating random IDs
 
-// @desc    Step 1: Create a payment order (e.g., initializing Razorpay/Stripe)
-// @route   POST /api/payments/create-order
-// @access  Private (Clients only)
-export const createPaymentOrder = asyncHandler(async (req, res, next) => {
-  const { bookingId, amount } = req.body;
+// @desc    Get my payment history (as client or professional), newest first
+// @route   GET /api/payments/mine
+// @access  Private
+export const getMyPayments = asyncHandler(async (req, res, next) => {
+  const payments = await Payment.find({
+    $or: [{ client: req.user.id }, { professional: req.user.id }],
+  })
+    .populate("booking", "service bookingId")
+    .populate("client", "name")
+    .populate("professional", "name")
+    .sort("-createdAt");
 
-  const booking = await Booking.findById(bookingId);
+  res.status(200).json({
+    success: true,
+    payments,
+  });
+});
+
+// @desc    Get the payment receipt for a specific booking
+// @route   GET /api/payments/:bookingId
+// @access  Private (only the booking's client or professional)
+export const getPaymentDetails = asyncHandler(async (req, res, next) => {
+  const booking = await Booking.findById(req.params.bookingId);
+
   if (!booking) {
     return next(new AppError("Booking not found", 404));
   }
 
-  // Generate a mock Transaction ID (In real life, Razorpay generates this for you)
-  const mockTransactionId = `TXN_${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+  const isParticipant =
+    booking.client.toString() === req.user.id ||
+    booking.professional.toString() === req.user.id;
 
-  const payment = await Payment.create({
-    booking: bookingId,
-    client: req.user.id,
-    professional: booking.professional,
-    amount,
-    transactionId: mockTransactionId,
-    status: "pending"
-  });
-
-  res.status(201).json({
-    success: true,
-    message: "Payment order created",
-    payment,
-    // You would send the order ID to React here so the Razorpay popup can open
-    orderId: mockTransactionId 
-  });
-});
-
-// @desc    Step 2: Verify payment success & update Booking
-// @route   POST /api/payments/verify
-// @access  Private
-export const verifyPayment = asyncHandler(async (req, res, next) => {
-  const { transactionId, paymentMethod } = req.body;
-
-  const payment = await Payment.findOne({ transactionId });
-  if (!payment) {
-    return next(new AppError("Payment record not found", 404));
+  if (!isParticipant) {
+    return next(new AppError("Not authorized to view this payment", 403));
   }
 
-  // 1. Update Payment Record
-  payment.status = "success";
-  payment.paymentMethod = paymentMethod || "Online";
-  await payment.save();
-
-  // 2. Update the actual Booking status to 'paid'
-  await Booking.findByIdAndUpdate(payment.booking, {
-    paymentStatus: "paid",
-    status: "completed"
-  });
-
-  res.status(200).json({
-    success: true,
-    message: "Payment verified successfully",
-    payment
-  });
-});
-
-// @desc    Get payment receipt for a specific booking
-// @route   GET /api/payments/:bookingId
-// @access  Private
-export const getPaymentDetails = asyncHandler(async (req, res, next) => {
-  const payment = await Payment.findOne({ booking: req.params.bookingId })
-    .populate("client", "name email")
+  const payment = await Payment.findOne({ booking: booking._id })
+    .populate("booking", "service bookingId")
+    .populate("client", "name")
     .populate("professional", "name");
 
   if (!payment) {
@@ -87,6 +67,6 @@ export const getPaymentDetails = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    payment
+    payment,
   });
 });

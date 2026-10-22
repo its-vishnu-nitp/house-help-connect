@@ -4,7 +4,9 @@ import {
   updateMyProfile,
   searchWorkers,
   getWorkerProfileById,
-  toggleSaveProfessional
+  toggleSaveProfessional,
+  verifyAadhaar,
+  updateAvailability
 } from "../controllers/profileController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
@@ -23,6 +25,12 @@ router.get("/me", getUserProfile);
 
 // Profile persistence update endpoint
 router.put("/update", updateMyProfile);
+
+// Demo Aadhaar e-KYC — persists the number + verified flag
+router.put("/verify-aadhaar", verifyAadhaar);
+
+// Worker availability toggle (pauses/resumes visibility in search)
+router.put("/availability", updateAvailability);
 
 // Client actions
 router.post("/save-worker", toggleSaveProfessional);

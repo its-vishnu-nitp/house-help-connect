@@ -4,6 +4,7 @@ const WorkerSidebar = ({ currentView, setCurrentView }) => {
   const navItems = [
     { id: 'home', icon: '🏠', label: 'Dashboard' },
     { id: 'clients', icon: '👥', label: 'My Clients' },
+    { id: 'messages', icon: '💬', label: 'Messages' },
     { id: 'verification', icon: '🛡️', label: 'Verification' },
   ];
 

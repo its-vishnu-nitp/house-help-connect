@@ -57,15 +57,16 @@ export const restrictTo = (...roles) => {
 };
 
 export const requireAadhaar = (req, res, next) => {
-  // MVP PHASE 1 BYPASS: 
-  // We are skipping the strict Aadhaar check right now so you can test the booking flow.
-  // In Phase 2, uncomment the code below:
-  
-  /*
-  if (!req.user.isAadhaarVerified) {
-    return next(new AppError("Action denied. You must verify your Aadhaar card to use this feature.", 403));
+  // Role-aware Aadhaar gate:
+  // - Workers must be Aadhaar-verified to take bookings actions
+  //   (create/respond/pay-related flows pass through the booking router,
+  //   where this middleware guards the state-changing endpoints).
+  // - Clients pass through — their flow has no Aadhaar step.
+  if (req.user?.role === "worker" && !req.user.isAadhaarVerified) {
+    return next(
+      new AppError("Action denied. Please verify your Aadhaar to continue.", 403)
+    );
   }
-  */
-  
+
   next();
 };

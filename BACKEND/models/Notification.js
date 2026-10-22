@@ -20,4 +20,7 @@ const notificationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Inbox query: a user's notifications, unread first-class, newest first.
+notificationSchema.index({ recipient: 1, isRead: 1, createdAt: -1 });
+
 export default mongoose.model("Notification", notificationSchema);

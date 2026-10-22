@@ -82,3 +82,17 @@ export const getWorkerReviews = asyncHandler(async (req, res, next) => {
     reviews
   });
 });
+
+// @desc    Get the review for a specific booking (or null if unreviewed).
+//          Lets the frontend show the persisted reviewed state after a
+//          page refresh instead of offering the review form again.
+// @route   GET /api/reviews/booking/:bookingId
+// @access  Private
+export const getReviewByBooking = asyncHandler(async (req, res, next) => {
+  const review = await Review.findOne({ booking: req.params.bookingId });
+
+  res.status(200).json({
+    success: true,
+    review: review || null
+  });
+});

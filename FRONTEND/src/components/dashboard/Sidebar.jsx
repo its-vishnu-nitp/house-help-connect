@@ -5,6 +5,8 @@ const Sidebar = ({ currentView, setCurrentView }) => {
     { id: 'home', icon: '🏠', label: 'Home' },
     { id: 'professionals', icon: '👥', label: 'Network' },
     { id: 'bookings', icon: '📅', label: 'Bookings' },
+    { id: 'saved', icon: '❤️', label: 'Saved' },
+    { id: 'messages', icon: '💬', label: 'Messages' },
   ];
 
   return (

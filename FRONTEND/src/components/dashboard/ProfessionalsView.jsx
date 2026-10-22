@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { profileService } from '../../services/profile.service';
+import WorkerProfileModal from './WorkerProfileModal';
 
-const ProfessionalsView = ({ onBookWorker }) => {
+const ProfessionalsView = ({ onBookWorker, savedIds = [], onToggleSave, onMessageWorker }) => {
   const [workers, setWorkers] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null); // Profile Preview Modal State
+  const [categoryInput, setCategoryInput] = useState('');
+  const [cityInput, setCityInput] = useState('');
   const observerTarget = useRef(null);
   const loadingRef = useRef(false);
+  const filtersRef = useRef({ category: '', city: '' });
 
   const loadWorkers = useCallback(async (pageNum) => {
     if (loadingRef.current) return;
@@ -16,7 +20,8 @@ const ProfessionalsView = ({ onBookWorker }) => {
     setLoading(true);
 
     try {
-      const data = await profileService.searchWorkers('', '', pageNum, 6);
+      const { category, city } = filtersRef.current;
+      const data = await profileService.searchWorkers(category, city, pageNum, 6);
       setWorkers((prev) => (pageNum === 1 ? data.workers : [...prev, ...data.workers]));
       setHasMore(data.hasMore);
     } catch (err) {
@@ -26,6 +31,31 @@ const ProfessionalsView = ({ onBookWorker }) => {
       setLoading(false);
     }
   }, []);
+
+  // Apply (or clear) the category/city filters and restart pagination
+  const applyFilters = (category, city) => {
+    filtersRef.current = { category: category.trim(), city: city.trim() };
+    setWorkers([]);
+    setHasMore(true);
+    if (page !== 1) {
+      setPage(1); // the page effect reloads page 1 with the new filters
+    } else {
+      loadWorkers(1);
+    }
+  };
+
+  const handleFilterSubmit = (e) => {
+    e.preventDefault();
+    applyFilters(categoryInput, cityInput);
+  };
+
+  const handleClearFilters = () => {
+    setCategoryInput('');
+    setCityInput('');
+    applyFilters('', '');
+  };
+
+  const filtersActive = filtersRef.current.category !== '' || filtersRef.current.city !== '';
 
   useEffect(() => {
     loadWorkers(page);
@@ -60,6 +90,52 @@ const ProfessionalsView = ({ onBookWorker }) => {
         </p>
       </div>
 
+      {/* Category + City filters (both are sent to the search API) */}
+      <form onSubmit={handleFilterSubmit} className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <span className="absolute inset-y-0 flex items-center pointer-events-none left-4 text-ink-muted">🔍</span>
+          <input
+            type="text"
+            value={categoryInput}
+            onChange={(e) => setCategoryInput(e.target.value)}
+            placeholder="Filter by service (e.g. Plumbing, Cleaning)..."
+            className="w-full py-3.5 pl-11 pr-4 font-medium border outline-none rounded-2xl border-surface-border bg-surface-card text-ink-main focus:ring-2 focus:ring-brand"
+          />
+        </div>
+        <div className="relative sm:w-56">
+          <span className="absolute inset-y-0 flex items-center pointer-events-none left-4 text-ink-muted">📍</span>
+          <input
+            type="text"
+            value={cityInput}
+            onChange={(e) => setCityInput(e.target.value)}
+            placeholder="City (e.g. Mumbai)"
+            aria-label="Filter by city"
+            className="w-full py-3.5 pl-11 pr-4 font-medium border outline-none rounded-2xl border-surface-border bg-surface-card text-ink-main focus:ring-2 focus:ring-brand"
+          />
+        </div>
+        <button
+          type="submit"
+          className="px-6 py-3.5 text-sm font-bold text-white transition-all bg-brand rounded-2xl hover:bg-brand-dark active:scale-95"
+        >
+          Apply Filters
+        </button>
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="px-5 py-3.5 text-sm font-bold transition-colors border rounded-2xl border-surface-border text-ink-muted hover:text-ink-main bg-surface-card"
+          >
+            Clear
+          </button>
+        )}
+      </form>
+
+      {!loading && workers.length === 0 && (
+        <div className="py-12 text-center border text-ink-muted bg-surface-card rounded-3xl border-surface-border">
+          <p className="text-lg">No professionals match these filters yet. Try another service or city.</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {workers.map((worker) => {
           const servicesList =
@@ -70,8 +146,22 @@ const ProfessionalsView = ({ onBookWorker }) => {
           return (
             <div
               key={worker._id}
-              className="flex flex-col justify-between p-6 transition-all duration-300 border bg-surface-card rounded-3xl border-surface-border shadow-modern hover:shadow-lg"
+              className="relative flex flex-col justify-between p-6 transition-all duration-300 border bg-surface-card rounded-3xl border-surface-border shadow-modern hover:shadow-xl hover:-translate-y-1"
             >
+              {onToggleSave && (
+                <button
+                  type="button"
+                  onClick={() => onToggleSave(worker)}
+                  title={savedIds.includes(worker._id) ? 'Remove from saved' : 'Save this professional'}
+                  className={`absolute top-4 right-4 z-10 flex items-center justify-center w-9 h-9 text-base border rounded-full transition-all active:scale-90 ${
+                    savedIds.includes(worker._id)
+                      ? 'bg-rose-50 border-rose-200'
+                      : 'bg-surface border-surface-border hover:border-rose-200'
+                  }`}
+                >
+                  {savedIds.includes(worker._id) ? '❤️' : '🤍'}
+                </button>
+              )}
               <div>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex items-center justify-center overflow-hidden text-2xl font-bold w-14 h-14 rounded-2xl bg-brand/10 text-brand">
@@ -113,7 +203,11 @@ const ProfessionalsView = ({ onBookWorker }) => {
                 </div>
 
                 <div className="flex items-center justify-between py-3 my-2 text-sm font-semibold border-t border-b border-surface-border text-ink-muted">
-                  <span>⭐ {worker.rating || '4.9'}</span>
+                  <span>
+                    {Number(worker.rating) > 0
+                      ? <>⭐ {Number(worker.rating).toFixed(1)} <span className="text-xs font-medium">({worker.totalReviews || 0})</span></>
+                      : <span className="text-xs font-bold text-brand">✦ New Pro</span>}
+                  </span>
                   <span className="font-bold text-ink-main">₹{worker.hourlyRate}/hr</span>
                 </div>
               </div>
@@ -155,93 +249,14 @@ const ProfessionalsView = ({ onBookWorker }) => {
 
       {/* Profile Detail Preview Modal */}
       {selectedWorker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg p-8 border shadow-2xl bg-surface-card rounded-[2.5rem] border-surface-border space-y-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-16 h-16 text-2xl font-black rounded-2xl bg-brand/10 text-brand">
-                  {(selectedWorker.userId?.name || 'P').charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black text-ink-main">
-                    {selectedWorker.userId?.name || 'Professional'}
-                  </h2>
-                  <p className="text-sm font-medium text-ink-muted">
-                    📍 {selectedWorker.userId?.location?.city || 'Local Area'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedWorker(null)}
-                className="flex items-center justify-center border rounded-full cursor-pointer w-9 h-9 bg-surface border-surface-border text-ink-muted hover:text-ink-main"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 p-4 text-center border rounded-2xl bg-surface border-surface-border">
-              <div>
-                <span className="block text-xs font-bold uppercase text-ink-muted">Rate</span>
-                <span className="text-lg font-black text-brand">₹{selectedWorker.hourlyRate || 250}/hr</span>
-              </div>
-              <div>
-                <span className="block text-xs font-bold uppercase text-ink-muted">Rating</span>
-                <span className="text-lg font-black text-amber-600">★ {selectedWorker.rating || 4.9}</span>
-              </div>
-              <div>
-                <span className="block text-xs font-bold uppercase text-ink-muted">Experience</span>
-                <span className="text-lg font-black text-ink-main">{selectedWorker.experience || 1}+ Yrs</span>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="mb-2 text-xs font-bold tracking-wider uppercase text-ink-muted">
-                Skills & Services
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {(selectedWorker.services || [selectedWorker.serviceCategory || 'General Assistance']).map((s) => (
-                  <span
-                    key={s}
-                    className="px-3 py-1.5 text-xs font-bold rounded-xl bg-brand/10 text-brand border border-brand/20"
-                  >
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="mb-2 text-xs font-bold tracking-wider uppercase text-ink-muted">
-                About Professional
-              </h4>
-              <p className="p-4 text-sm font-medium leading-relaxed whitespace-pre-line border rounded-2xl bg-surface border-surface-border text-ink-main">
-                {selectedWorker.bio || 'Verified domestic home care specialist with proven service track records.'}
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-4 border-t border-surface-border">
-              <button
-                type="button"
-                onClick={() => setSelectedWorker(null)}
-                className="flex-1 py-3 text-sm font-semibold transition-colors border cursor-pointer rounded-xl border-surface-border text-ink-muted hover:bg-surface"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const toBook = selectedWorker;
-                  setSelectedWorker(null);
-                  if (onBookWorker) onBookWorker(toBook);
-                }}
-                className="flex-1 py-3 text-sm font-bold text-white transition-all shadow-md cursor-pointer rounded-xl bg-brand hover:bg-brand-dark shadow-brand/20 active:scale-95"
-              >
-                Book This Pro
-              </button>
-            </div>
-          </div>
-        </div>
+        <WorkerProfileModal
+          worker={selectedWorker}
+          onClose={() => setSelectedWorker(null)}
+          onBookWorker={onBookWorker}
+          isSaved={savedIds.includes(selectedWorker._id)}
+          onToggleSave={onToggleSave}
+          onMessageWorker={onMessageWorker}
+        />
       )}
     </div>
   );

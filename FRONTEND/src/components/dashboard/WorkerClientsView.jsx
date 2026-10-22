@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { bookingService } from '../../services/booking.service';
+import RescheduleModal from './RescheduleModal';
 
-const WorkerClientsView = () => {
+const WorkerClientsView = ({ onMessage }) => {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
 
   const fetchBookings = async () => {
     try {
@@ -73,13 +75,41 @@ const WorkerClientsView = () => {
 
   // 2. Confirmed upcoming jobs (keeps them here even if already paid in advance)
   const upcomingJobs = bookings.filter(
-    (b) => b.scheduleStatus === 'confirmed' && b.status !== 'cancelled'
+    (b) => b.scheduleStatus === 'confirmed' && b.status !== 'cancelled' && b.status !== 'completed'
   );
 
-  // 3. Past or rejected jobs
+  // 3. Past jobs — completed, cancelled or rejected
   const pastJobs = bookings.filter(
-    (b) => b.status === 'cancelled' || b.scheduleStatus === 'rejected'
+    (b) => b.status === 'completed' || b.status === 'cancelled' || b.scheduleStatus === 'rejected'
   );
+
+  const handleStartJob = async (bookingId) => {
+    try {
+      setActionLoading(bookingId);
+      await bookingService.updateBookingStatus(bookingId, { status: 'active' });
+      setBookings((prev) =>
+        prev.map((b) => (b._id === bookingId ? { ...b, status: 'active' } : b))
+      );
+    } catch (err) {
+      console.error('Failed to start job', err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleMarkCompleted = async (bookingId) => {
+    try {
+      setActionLoading(bookingId);
+      await bookingService.updateBookingStatus(bookingId, { status: 'completed' });
+      setBookings((prev) =>
+        prev.map((b) => (b._id === bookingId ? { ...b, status: 'completed' } : b))
+      );
+    } catch (err) {
+      console.error('Failed to mark job completed', err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   return (
     <div className="w-full pt-4 space-y-8 font-sans animate-fade-in">
@@ -144,7 +174,7 @@ const WorkerClientsView = () => {
                   const client = typeof job.client === 'object' && job.client !== null ? job.client : {};
                   const clientName = client.name || 'Client';
                   const clientInitial = clientName.charAt(0).toUpperCase();
-                  const location = client.location?.city || 'Local Area';
+                  const location = client.city || client.location?.city || '—';
                   const total = calculateTotal(job);
 
                   return (
@@ -180,6 +210,14 @@ const WorkerClientsView = () => {
                           <p className="text-xs font-bold text-ink-muted">Fare</p>
                           <p className="text-lg font-black text-ink-main">₹{total.toLocaleString()}</p>
                         </div>
+                        {onMessage && client._id && (
+                          <button
+                            onClick={() => onMessage({ userId: client._id, name: clientName, bookingId: job._id })}
+                            className="px-5 py-2.5 text-sm font-bold transition-all border rounded-xl border-brand/40 text-brand bg-brand/5 hover:bg-brand/10"
+                          >
+                            💬 Message
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDecision(job._id, 'reject')}
                           disabled={actionLoading === job._id}
@@ -214,7 +252,7 @@ const WorkerClientsView = () => {
                   const client = typeof job.client === 'object' && job.client !== null ? job.client : {};
                   const clientName = client.name || 'Client';
                   const clientInitial = clientName.charAt(0).toUpperCase();
-                  const location = client.location?.city || 'Local Area';
+                  const location = client.city || client.location?.city || '—';
                   const isPaid = job.paymentStatus === 'paid';
                   const total = calculateTotal(job);
 
@@ -226,7 +264,7 @@ const WorkerClientsView = () => {
                       {/* Status Badges */}
                       <div className="absolute flex gap-1 top-4 left-4">
                         <span className="px-3 py-1 text-xs font-bold border rounded-full bg-emerald-50 border-emerald-200 text-emerald-700">
-                          Confirmed
+                          {job.status === 'active' ? 'In Progress' : 'Confirmed'}
                         </span>
                         {isPaid && (
                           <span className="px-2 py-1 text-xs font-bold text-blue-700 border border-blue-200 rounded-full bg-blue-50">
@@ -246,7 +284,44 @@ const WorkerClientsView = () => {
                         📅 {formatDate(job.date)} at ⏰ {job.time}
                       </p>
 
-                      <div className="flex items-center justify-between w-full pt-4 mt-auto border-t border-surface-border">
+                      {job.status === 'active' ? (
+                        <button
+                          onClick={() => handleMarkCompleted(job._id)}
+                          disabled={actionLoading === job._id}
+                          className="w-full py-2.5 mt-5 text-sm font-bold text-white transition-all bg-emerald-600 rounded-xl hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                        >
+                          {actionLoading === job._id ? 'Updating...' : '✓ Mark Job Completed'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleStartJob(job._id)}
+                          disabled={actionLoading === job._id}
+                          className="w-full py-2.5 mt-5 text-sm font-bold text-white transition-all bg-brand rounded-xl hover:opacity-90 active:scale-95 disabled:opacity-50"
+                        >
+                          {actionLoading === job._id ? 'Updating...' : '▶ Start Job'}
+                        </button>
+                      )}
+
+                      <div className="flex w-full gap-2 mt-3">
+                        {onMessage && client._id && (
+                          <button
+                            onClick={() => onMessage({ userId: client._id, name: clientName, bookingId: job._id })}
+                            className="flex-1 py-2.5 text-xs font-bold transition-all border rounded-xl border-brand/40 text-brand bg-brand/5 hover:bg-brand/10"
+                          >
+                            💬 Message
+                          </button>
+                        )}
+                        {(job.status === 'upcoming' || job.status === 'active') && (
+                          <button
+                            onClick={() => setRescheduleTarget(job)}
+                            className="flex-1 py-2.5 text-xs font-bold transition-all border rounded-xl border-surface-border text-ink-main bg-surface-card hover:border-brand/40 hover:text-brand"
+                          >
+                            📅 Reschedule
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between w-full pt-4 mt-4 border-t border-surface-border">
                         <span className="text-xs font-bold text-ink-muted">Earnings:</span>
                         <span className="text-xl font-black text-ink-main">
                           ₹{total.toLocaleString()}
@@ -271,7 +346,7 @@ const WorkerClientsView = () => {
                   const client = typeof job.client === 'object' && job.client !== null ? job.client : {};
                   const clientName = client.name || 'Client';
                   const clientInitial = clientName.charAt(0).toUpperCase();
-                  const location = client.location?.city || 'Local Area';
+                  const location = client.city || client.location?.city || '—';
                   const total = calculateTotal(job);
 
                   return (
@@ -293,6 +368,15 @@ const WorkerClientsView = () => {
                       <p className="mb-1 text-sm font-medium text-ink-muted">📍 {location}</p>
                       <p className="mb-4 text-xs text-ink-muted">📅 {formatDate(job.date)}</p>
 
+                      {onMessage && client._id && (
+                        <button
+                          onClick={() => onMessage({ userId: client._id, name: clientName, bookingId: job._id })}
+                          className="px-4 py-2 mb-4 text-xs font-bold transition-all border rounded-xl border-brand/40 text-brand bg-brand/5 hover:bg-brand/10"
+                        >
+                          💬 Message
+                        </button>
+                      )}
+
                       <div className="flex items-center justify-between w-full pt-4 mt-auto border-t border-surface-border">
                         <span className="text-xs font-bold text-ink-muted">Total:</span>
                         <span className="text-sm font-bold text-ink-main">
@@ -306,6 +390,20 @@ const WorkerClientsView = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Reschedule dialog (client must re-confirm the new slot) */}
+      {rescheduleTarget && (
+        <RescheduleModal
+          booking={rescheduleTarget}
+          onClose={() => setRescheduleTarget(null)}
+          onRescheduled={(updated) => {
+            const uid = updated._id || updated.id;
+            setBookings((prev) =>
+              prev.map((b) => ((b._id === uid || b.id === uid) ? { ...b, ...updated } : b))
+            );
+          }}
+        />
       )}
     </div>
   );

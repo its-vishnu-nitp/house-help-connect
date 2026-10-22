@@ -74,10 +74,45 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(-100%)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // Gentle bobbing for hero floating cards
+        'float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-12px)' },
+        },
+        'float-slow': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-7px)' },
+        },
+        // Infinite horizontal scroll for the services marquee
+        'marquee': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        // Slow pan for animated gradient text / hero glow
+        'gradient-x': {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
+        // Soft pulsing glow behind the hero
+        'glow-pulse': {
+          '0%, 100%': { opacity: '0.55', transform: 'scale(1)' },
+          '50%': { opacity: '0.9', transform: 'scale(1.08)' },
+        },
+        // Modal entrance
+        'pop-in': {
+          '0%': { opacity: '0', transform: 'scale(0.96) translateY(10px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.35s ease both',
         'slide-down': 'slide-down 0.3s ease both',
+        'float': 'float 5s ease-in-out infinite',
+        'float-slow': 'float-slow 7s ease-in-out infinite',
+        'marquee': 'marquee 32s linear infinite',
+        'gradient-x': 'gradient-x 6s ease infinite',
+        'glow-pulse': 'glow-pulse 7s ease-in-out infinite',
+        'pop-in': 'pop-in 0.25s ease both',
       },
     },
   },

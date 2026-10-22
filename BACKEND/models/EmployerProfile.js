@@ -14,6 +14,7 @@ const employerProfileSchema = new mongoose.Schema(
         ref: "HelperProfile",
       }
     ],
+    bio: { type: String, maxLength: 1000 },
     familySize: { type: Number, min: 1 },
     totalSpent: { type: Number, default: 0 },
   },

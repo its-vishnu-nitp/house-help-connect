@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import mongoose from "mongoose";
 import User from "../models/User.js";
 import EmployerProfile from "../models/EmployerProfile.js";
 import HelperProfile from "../models/HelperProfile.js";
@@ -52,41 +51,46 @@ export const register = asyncHandler(async (req, res, next) => {
     return next(new AppError("Name, email, password, and role are required", 400));
   }
 
+  // Self-registration is only for clients and workers. Roles like "admin"
+  // must never be creatable from a public request body.
+  if (!["client", "worker"].includes(role)) {
+    return next(new AppError("Invalid role. Please register as a client or a worker", 400));
+  }
+
+  if (String(password).length < 6) {
+    return next(new AppError("Password must be at least 6 characters long", 400));
+  }
+
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return next(new AppError("Email already exists", 409));
   }
 
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  // No Mongo transaction here: transactions need a replica set and fail on
+  // the standalone local MongoDB used in development. Create sequentially
+  // and roll back the user by hand if profile creation fails.
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const newUser = await User.create({ name, email, password: hashedPassword, role });
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const [newUser] = await User.create(
-      [{ name, email, password: hashedPassword, role }],
-      { session }
-    );
-
     // Create the specific profile based on role
     if (role === "client") {
-      await EmployerProfile.create([{ userId: newUser._id }], { session });
+      await EmployerProfile.create({ userId: newUser._id });
     } else if (role === "worker") {
-      await HelperProfile.create(
-        [{ userId: newUser._id, serviceCategory: "Deep Cleaning", hourlyRate: 0 }],
-        { session }
-      );
+      await HelperProfile.create({
+        userId: newUser._id,
+        serviceCategory: "Deep Cleaning",
+        hourlyRate: 0,
+      });
     }
-
-    await session.commitTransaction();
-
-    generateTokenAndRespond(newUser, 201, res, "User registration successful");
   } catch (error) {
-    await session.abortTransaction();
+    // Cleanup: never leave an account behind without its role profile.
+    await User.findByIdAndDelete(newUser._id);
     return next(error);
-  } finally {
-    session.endSession();
   }
+
+  generateTokenAndRespond(newUser, 201, res, "User registration successful");
 });
 
 /**

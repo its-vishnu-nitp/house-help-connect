@@ -24,5 +24,17 @@ export const profileService = {
   toggleSaveProfessional: async (workerProfileId) => {
     const response = await api.post('/profiles/save-worker', { workerProfileId });
     return response.data;
+  },
+
+  // Demo Aadhaar e-KYC — persists the verified flag on the account
+  verifyAadhaar: async (aadhaarNumber) => {
+    const response = await api.put('/profiles/verify-aadhaar', { aadhaarNumber });
+    return response.data;
+  },
+
+  // Worker availability switch — unavailable workers drop out of search
+  setAvailability: async (isAvailable) => {
+    const response = await api.put('/profiles/availability', { isAvailable });
+    return response.data;
   }
 };

@@ -13,9 +13,23 @@ export const bookingService = {
     return response.data;
   },
 
-  // Update a booking (e.g., Worker accepts job, or Client pays)
+  // Update a booking (e.g., Worker accepts job, Client adds a tip)
   updateBookingStatus: async (bookingId, statusData) => {
     const response = await api.put(`/bookings/${bookingId}/status`, statusData);
+    return response.data;
+  },
+
+  // Record a demo payment. The server persists paymentStatus + receipt
+  // fields on the booking, so the paid state survives page refreshes.
+  payBooking: async (bookingId, paymentMethod) => {
+    const response = await api.post(`/bookings/${bookingId}/pay`, { paymentMethod });
+    return response.data;
+  },
+
+  // Propose a new date/time for a booking. The booking returns to a
+  // pending schedule state — the other party must re-confirm it.
+  rescheduleBooking: async (bookingId, { date, time }) => {
+    const response = await api.put(`/bookings/${bookingId}/reschedule`, { date, time });
     return response.data;
   }
 };

@@ -3,20 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import ClientDashboard from './ClientDashboard';
 import WorkerDashboard from './WorkerDashboard';
 
+const readStoredUser = () => {
+  try {
+    const storedUser = localStorage.getItem("currentUser");
+    return storedUser ? JSON.parse(storedUser) : null;
+  } catch {
+    return null;
+  }
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const [user] = useState(readStoredUser);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("currentUser");
-    
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      // Fallback redirect if an unauthenticated context slips past client guards
-      navigate('/login');
-    }
-  }, [navigate]);
+    // Fallback redirect if an unauthenticated context slips past client guards
+    if (!user) navigate('/login');
+  }, [user, navigate]);
 
   if (!user) {
     return (

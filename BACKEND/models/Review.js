@@ -6,6 +6,7 @@ const reviewSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Booking",
       required: true,
+      unique: true, // One review per booking — enforced at the DB level too.
     },
     reviewer: {
       type: mongoose.Schema.Types.ObjectId,
@@ -27,5 +28,8 @@ const reviewSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Worker profile pages: all reviews for one professional, newest first.
+reviewSchema.index({ reviewee: 1, createdAt: -1 });
 
 export default mongoose.model("Review", reviewSchema);

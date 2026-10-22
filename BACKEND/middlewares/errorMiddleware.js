@@ -34,9 +34,14 @@ const errorHandler = (err, req, res, next) => {
     error = new AppError('Your token has expired! Please log in again.', 401);
   }
 
+  const message = error.message || 'Server Error';
+
+  // API contract: `message` is the canonical field the frontend reads;
+  // `error` mirrors the same string for backward compatibility.
   res.status(error.statusCode || 500).json({
     success: false,
-    error: error.message || 'Server Error'
+    message,
+    error: message
   });
 };
 

@@ -7,6 +7,7 @@
  */
 
 import Message from "../models/Message.js";
+import User from "../models/User.js";
 import AppError from "../utils/AppError.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
@@ -69,5 +70,64 @@ export const markAsRead = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "Messages marked as read"
+  });
+});
+
+// @desc    List my conversations: one entry per chat partner with the
+//          last message and my unread count, latest activity first.
+// @route   GET /api/messages
+// @access  Private
+export const getConversations = asyncHandler(async (req, res, next) => {
+  const me = req.user._id;
+
+  // Group every message I'm part of by the OTHER participant, keeping
+  // the newest message per partner.
+  const grouped = await Message.aggregate([
+    {
+      $match: { $or: [{ sender: me }, { receiver: me }] },
+    },
+    { $sort: { createdAt: -1 } },
+    {
+      $group: {
+        _id: {
+          $cond: [{ $eq: ["$sender", me] }, "$receiver", "$sender"],
+        },
+        lastMessage: { $first: "$$ROOT" },
+      },
+    },
+    { $sort: { "lastMessage.createdAt": -1 } },
+  ]);
+
+  const partnerIds = grouped.map((g) => g._id);
+
+  // Unread counts per partner (messages they sent me that I haven't read)
+  const unreadRows = await Message.aggregate([
+    { $match: { receiver: me, isRead: false, sender: { $in: partnerIds } } },
+    { $group: { _id: "$sender", count: { $sum: 1 } } },
+  ]);
+  const unreadByPartner = new Map(unreadRows.map((r) => [r._id.toString(), r.count]));
+
+  const partners = await User.find({ _id: { $in: partnerIds } }).select("name role");
+  const partnerById = new Map(partners.map((p) => [p._id.toString(), p]));
+
+  const conversations = grouped
+    .filter((g) => partnerById.has(g._id.toString()))
+    .map((g) => {
+      const partner = partnerById.get(g._id.toString());
+      const last = g.lastMessage;
+      return {
+        user: { _id: partner._id, name: partner.name, role: partner.role },
+        lastMessage: {
+          content: last.content,
+          createdAt: last.createdAt,
+          sender: last.sender,
+        },
+        unreadCount: unreadByPartner.get(g._id.toString()) || 0,
+      };
+    });
+
+  res.status(200).json({
+    success: true,
+    conversations,
   });
 });

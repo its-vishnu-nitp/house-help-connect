@@ -1,22 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { profileService } from '../../services/profile.service';
+import { paymentService } from '../../services/payment.service';
+import { showToast } from '../../utils/toast';
 
+// Canonical categories (must match FRONTEND/src/data/mockData.js so that
+// dashboard category searches actually find these workers), plus legacy
+// names kept so profiles saved with older labels remain editable.
 const AVAILABLE_SERVICES = [
   'Deep Cleaning',
-  'Cooking',
-  'Plumbing',
-  'Electrician',
+  'Daily Cooking',
   'Babysitting',
+  'Plumbing',
+  'Electrical Repair',
+  'Carpentry',
+  'Laundry & Ironing',
+  'Pest Control',
+  'Cooking',
+  'Electrician',
   'Elderly Care',
-  'Gardening',
-  'Carpentry'
+  'Gardening'
 ];
 
 const SettingsView = ({ user }) => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [smsAlerts, setSmsAlerts] = useState(true);
+  // Notification prefs are client-side preferences — persist them in
+  // localStorage so they at least survive refresh (no backend store exists).
+  const [emailAlerts, setEmailAlerts] = useState(() => localStorage.getItem('hhc_email_alerts') !== 'off');
+  const [smsAlerts, setSmsAlerts] = useState(() => localStorage.getItem('hhc_sms_alerts') !== 'off');
+  const [isAadhaarVerified, setIsAadhaarVerified] = useState(false);
+  const [aadhaarInput, setAadhaarInput] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+
+  useEffect(() => { localStorage.setItem('hhc_email_alerts', emailAlerts ? 'on' : 'off'); }, [emailAlerts]);
+  useEffect(() => { localStorage.setItem('hhc_sms_alerts', smsAlerts ? 'on' : 'off'); }, [smsAlerts]);
 
   const isWorker = user?.role === 'worker';
 
@@ -39,7 +58,7 @@ const SettingsView = ({ user }) => {
   const tabs = [
     { id: 'profile', icon: '👤', label: 'Profile Details' },
     { id: 'verification', icon: '🛡️', label: 'Account Verification' },
-    { id: 'payments', icon: '💳', label: 'Payment Methods' },
+    { id: 'payments', icon: '💳', label: 'Payment History' },
     { id: 'notifications', icon: '🔔', label: 'Notifications' },
   ];
 
@@ -50,6 +69,7 @@ const SettingsView = ({ user }) => {
         const res = await profileService.getMyProfile();
         const profile = res.profile || {};
         const userData = res.user || user || {};
+        setIsAadhaarVerified(Boolean(userData.isAadhaarVerified));
 
         // Resolve services array (handling legacy string fallback)
         let resolvedServices = ['Deep Cleaning'];
@@ -132,6 +152,43 @@ const SettingsView = ({ user }) => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Payment history comes from the payments API (GET /payments/mine) —
+  // one record per payment the user is a party to, with its receipt data.
+  useEffect(() => {
+    if (activeTab !== 'payments') return;
+    const loadPayments = async () => {
+      setLoadingPayments(true);
+      try {
+        const res = await paymentService.getMyPayments();
+        setPaymentHistory(res.payments || []);
+      } catch {
+        setPaymentHistory([]);
+      } finally {
+        setLoadingPayments(false);
+      }
+    };
+    loadPayments();
+  }, [activeTab]);
+
+  const handleVerifyAadhaar = async () => {
+    const digits = aadhaarInput.replace(/\D/g, '');
+    if (digits.length !== 12) {
+      showToast('Please enter a valid 12-digit Aadhaar number.', 'error');
+      return;
+    }
+    setVerifying(true);
+    try {
+      await profileService.verifyAadhaar(digits);
+      setIsAadhaarVerified(true);
+      setAadhaarInput('');
+      showToast('Aadhaar verified and saved to your account!', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Verification failed. Please try again.', 'error');
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -281,6 +338,22 @@ const SettingsView = ({ user }) => {
                     </div>
                   </div>
 
+                  {!isWorker && (
+                    <div>
+                      <label className="block mb-2 text-xs font-bold tracking-wider uppercase text-ink-muted">
+                        About / Bio
+                      </label>
+                      <textarea
+                        name="bio"
+                        rows="4"
+                        value={formData.bio}
+                        onChange={handleInputChange}
+                        placeholder="Tell professionals a little about your household — family size, pets, preferred timings..."
+                        className="w-full p-3.5 text-sm border outline-none rounded-xl border-surface-border bg-surface text-ink-main focus:ring-2 focus:ring-brand font-medium"
+                      ></textarea>
+                    </div>
+                  )}
+
                   {isWorker && (
                     <div className="pt-6 space-y-6 border-t border-surface-border">
                       {/* Multi-Select Roles / Skills */}
@@ -404,6 +477,15 @@ const SettingsView = ({ user }) => {
                     </div>
                   </div>
 
+                  {!isWorker && savedData.bio && (
+                    <div className="p-6 border rounded-2xl bg-surface border-surface-border">
+                      <p className="mb-2 text-xs font-bold tracking-wider uppercase text-ink-muted">About / Bio</p>
+                      <p className="text-sm font-medium leading-relaxed whitespace-pre-line text-ink-main">
+                        {savedData.bio}
+                      </p>
+                    </div>
+                  )}
+
                   {isWorker && (
                     <div className="space-y-4">
                       <h3 className="text-lg font-bold text-ink-main">Service Details</h3>
@@ -495,12 +577,92 @@ const SettingsView = ({ user }) => {
             </div>
           )}
 
-          {/* TAB 3 & 4: OTHER PLACEHOLDER TABS */}
-          {activeTab !== 'profile' && activeTab !== 'notifications' && (
-            <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
-              <span className="mb-4 text-5xl opacity-50">🚧</span>
-              <h2 className="mb-2 text-2xl font-bold text-ink-main">Under Construction</h2>
-              <p className="font-medium text-ink-muted">This settings panel will be available in the next update.</p>
+          {/* TAB 3: ACCOUNT VERIFICATION */}
+          {activeTab === 'verification' && (
+            <div className="space-y-6 animate-fade-in">
+              <h2 className="pb-4 mb-2 text-2xl font-extrabold border-b text-ink-main border-surface-border">
+                Account Verification
+              </h2>
+              {isAadhaarVerified ? (
+                <div className="flex items-start gap-4 p-6 border border-emerald-200 bg-emerald-50 rounded-2xl">
+                  <span className="text-3xl">✅</span>
+                  <div>
+                    <h3 className="mb-1 text-lg font-bold text-emerald-800">Aadhaar Verified</h3>
+                    <p className="font-medium text-emerald-700">
+                      Your identity verification is saved on your account. Verified profiles
+                      get more trust — and more bookings.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="font-medium text-ink-muted">
+                    Verify your identity with your 12-digit Aadhaar number. It is stored
+                    securely on your account (demo verification — no live UIDAI check).
+                  </p>
+                  <input
+                    type="text"
+                    value={aadhaarInput}
+                    onChange={(e) => setAadhaarInput(e.target.value.replace(/[^\d ]/g, '').slice(0, 14))}
+                    placeholder="XXXX XXXX XXXX"
+                    className="w-full p-4 text-lg font-bold tracking-[0.15em] text-center border outline-none rounded-xl border-surface-border bg-surface text-ink-main focus:ring-2 focus:ring-brand"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVerifyAadhaar}
+                    disabled={verifying}
+                    className="w-full py-3.5 font-bold text-white transition-all bg-brand rounded-xl hover:bg-brand-dark active:scale-[0.99] disabled:opacity-50"
+                  >
+                    {verifying ? 'Verifying...' : 'Verify Aadhaar'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: PAYMENT HISTORY (demo payments recorded per booking) */}
+          {activeTab === 'payments' && (
+            <div className="space-y-6 animate-fade-in">
+              <h2 className="pb-4 mb-2 text-2xl font-extrabold border-b text-ink-main border-surface-border">
+                Payment History
+              </h2>
+              <p className="font-medium text-ink-muted">
+                Payments on House Help Connect are made per booking from your{' '}
+                <strong className="text-ink-main">Bookings</strong> page. They are{' '}
+                <strong className="text-ink-main">demo payments</strong> — no real money moves —
+                but every payment is recorded, so your receipts are always here.
+              </p>
+              {loadingPayments ? (
+                <p className="font-semibold animate-pulse text-brand">Loading payment history...</p>
+              ) : paymentHistory.length === 0 ? (
+                <div className="p-10 text-center border border-dashed rounded-2xl border-surface-border text-ink-muted">
+                  No payments recorded yet. When you pay for a confirmed booking, its receipt will appear here.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {paymentHistory.map((p) => {
+                    const bookingObj = typeof p.booking === 'object' && p.booking !== null ? p.booking : null;
+                    const serviceName = bookingObj?.service || 'Home Service';
+                    const other = user?.role === 'worker' ? p.client?.name : p.professional?.name;
+                    const paidDate = p.createdAt
+                      ? new Date(p.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                      : '';
+                    return (
+                      <div key={p._id} className="flex items-center justify-between gap-4 p-5 border rounded-2xl bg-surface border-surface-border">
+                        <div>
+                          <p className="font-bold text-ink-main">{serviceName} <span className="ml-1 px-2 py-0.5 text-[10px] font-black rounded-full bg-emerald-600 text-white align-middle uppercase">{p.status === 'success' ? 'Paid · Demo' : p.status || 'Paid'}</span></p>
+                          <p className="text-sm font-medium text-ink-muted">
+                            {user?.role === 'worker' ? 'From' : 'To'} {other || '—'} · {p.paymentMethod || 'UPI'}
+                            {paidDate ? ` · ${paidDate}` : ''}
+                          </p>
+                          {p.transactionId && <p className="font-mono text-xs text-ink-muted">{p.transactionId}</p>}
+                        </div>
+                        <span className="text-xl font-black text-ink-main">₹{Number(p.amount || 0).toLocaleString()}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

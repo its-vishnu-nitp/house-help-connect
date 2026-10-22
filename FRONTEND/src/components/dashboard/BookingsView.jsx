@@ -1,17 +1,58 @@
 import React, { useState } from 'react';
 import { bookingService } from '../../services/booking.service';
-import { showToast } from '../Toast';
+import { reviewService } from '../../services/review.service';
+import { paymentService } from '../../services/payment.service';
+import RescheduleModal from './RescheduleModal';
+import { showToast } from '../../utils/toast';
 
-const BookingsView = ({ bookings = [], onUpdateTip }) => {
+const BookingsView = ({ bookings = [], onUpdateTip, onMessage }) => {
   const [localBookings, setLocalBookings] = useState(bookings);
   const [activeTab, setActiveTab] = useState('upcoming');
   const [selectedPaymentJob, setSelectedPaymentJob] = useState(null);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [actionLoading, setActionLoading] = useState(null);
+  const [reviewedIds, setReviewedIds] = useState([]);
+  const [reviewDrafts, setReviewDrafts] = useState({});
+  const [reviewSubmitting, setReviewSubmitting] = useState(null);
+  const [receipts, setReceipts] = useState({});
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const fetchedReceiptsRef = React.useRef(new Set());
+  const fetchedReviewsRef = React.useRef(new Set());
 
   // Sync state if parent props update
   React.useEffect(() => {
     setLocalBookings(bookings);
+  }, [bookings]);
+
+  // Server-derived state that must survive refresh:
+  //  - full payment receipts for paid bookings (GET /payments/:bookingId),
+  //    falling back to the booking's own mirrored receipt fields on failure
+  //  - "already reviewed" for completed bookings (GET /reviews/booking/:id),
+  //    instead of relying on local state from this session only
+  React.useEffect(() => {
+    bookings.forEach((b) => {
+      const id = b._id || b.id;
+      if (!id) return;
+      if (b.paymentStatus === 'paid' && !fetchedReceiptsRef.current.has(id)) {
+        fetchedReceiptsRef.current.add(id);
+        paymentService.getPaymentByBooking(id)
+          .then((res) => {
+            if (res.payment) setReceipts((prev) => ({ ...prev, [id]: res.payment }));
+          })
+          .catch(() => { /* booking's own payment fields are the fallback */ });
+      }
+      if (b.status === 'completed' && !fetchedReviewsRef.current.has(id)) {
+        fetchedReviewsRef.current.add(id);
+        reviewService.getReviewByBooking(id)
+          .then((res) => {
+            if (res.review) {
+              setReviewedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+            }
+          })
+          .catch(() => { /* leave the review form available */ });
+      }
+    });
   }, [bookings]);
 
   // Format messy ISO date strings (e.g. 2026-09-10T00:00:00.000Z -> 10 Sep 2026)
@@ -45,53 +86,72 @@ const BookingsView = ({ bookings = [], onUpdateTip }) => {
     }
   };
 
-  // --- 2. DUMMY PAYMENT HANDLER ---
+  // --- 2. DEMO PAYMENT HANDLER ---
+  // The payment itself is simulated (no real gateway), but the RESULT is
+  // persisted on the server via POST /bookings/:id/pay — so after paying,
+  // a page refresh re-reads paymentStatus: 'paid' from the database and
+  // the pay options never reappear. (Previously this called the generic
+  // status endpoint with a paymentStatus field that the backend ignored,
+  // which is exactly why payments "didn't stick".)
   const handleProcessPayment = async (job) => {
+    const bookingId = job._id || job.id;
     setPaymentProcessing(true);
-
-    /* =========================================================================
-       FUTURE PAYMENT GATEWAY INTEGRATION (Razorpay / Stripe / Escrow)
-       -------------------------------------------------------------------------
-       1. Call backend API to create an order:
-          const order = await paymentService.createOrder({ bookingId: job._id, amount: totalAmount });
-       
-       2. Initialize Razorpay / Stripe SDK:
-          const rzp = new window.Razorpay({
-             key: process.env.REACT_APP_RAZORPAY_KEY,
-             amount: order.amount,
-             order_id: order.id,
-             handler: async (response) => {
-                await paymentService.verifyPayment(response);
-             }
-          });
-          rzp.open();
-       ========================================================================= */
-
-    // Simulated 1.5-second payment processing delay
-    setTimeout(async () => {
-      try {
-        const bookingId = job._id || job.id;
-        await bookingService.updateBookingStatus(bookingId, {
-          paymentStatus: 'paid'
-        });
-
-        setLocalBookings((prev) =>
-          prev.map((b) => ((b._id === bookingId || b.id === bookingId) ? { ...b, paymentStatus: 'paid' } : b))
-        );
-        setSelectedPaymentJob(null);
-        showToast(`Payment of ₹${job.calculatedTotal} received successfully!`, 'success');
-      } catch (err) {
-        console.error("Payment failed", err);
-      } finally {
-        setPaymentProcessing(false);
-      }
-    }, 1500);
+    try {
+      // Short simulated gateway delay for realism
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const res = await bookingService.payBooking(bookingId, paymentMethod);
+      const updated = res.booking;
+      setLocalBookings((prev) =>
+        prev.map((b) => ((b._id === bookingId || b.id === bookingId) ? { ...b, ...updated } : b))
+      );
+      setSelectedPaymentJob(null);
+      showToast(`Demo payment of ₹${job.calculatedTotal} recorded successfully!`, 'success');
+    } catch (err) {
+      console.error("Payment failed", err);
+      showToast(err.response?.data?.message || 'Payment failed. Please try again.', 'error');
+    } finally {
+      setPaymentProcessing(false);
+    }
   };
 
+  // --- 3. REVIEW HANDLER (completed jobs only; backend enforces one per booking) ---
+  const handleSubmitReview = async (job) => {
+    const bookingId = job._id || job.id;
+    const draft = reviewDrafts[bookingId] || {};
+    if (!draft.rating) {
+      showToast('Please pick a star rating first.', 'error');
+      return;
+    }
+    setReviewSubmitting(bookingId);
+    try {
+      await reviewService.createReview({
+        bookingId,
+        rating: draft.rating,
+        comment: draft.comment || ''
+      });
+      setReviewedIds((prev) => [...prev, bookingId]);
+      showToast('Thanks! Your review has been submitted.', 'success');
+    } catch (err) {
+      // Most common case: already reviewed in an earlier session
+      if (err.response?.status === 400 && /already reviewed/i.test(err.response?.data?.message || '')) {
+        setReviewedIds((prev) => [...prev, bookingId]);
+        showToast('You have already reviewed this job.', 'success');
+      } else {
+        showToast(err.response?.data?.message || 'Could not submit the review.', 'error');
+      }
+    } finally {
+      setReviewSubmitting(null);
+    }
+  };
+
+  // One bucket per tab, keyed on the booking `status` alone — previously
+  // scheduleStatus leaked into the filters, so a completed booking (whose
+  // scheduleStatus stays 'confirmed') appeared in BOTH Upcoming and Past,
+  // and the Active tab matched values the backend never produces.
   const displayBookings = localBookings.filter((b) => {
-    if (activeTab === 'active') return b.status === 'active' || b.scheduleStatus === 'in_progress';
-    if (activeTab === 'upcoming') return b.status === 'upcoming' || b.scheduleStatus === 'pending_pro' || b.scheduleStatus === 'confirmed';
-    return b.status === 'completed' || b.status === 'cancelled' || b.scheduleStatus === 'rejected';
+    if (activeTab === 'active') return b.status === 'active';
+    if (activeTab === 'upcoming') return b.status === 'upcoming';
+    return b.status === 'completed' || b.status === 'cancelled';
   });
 
   return (
@@ -141,11 +201,22 @@ const BookingsView = ({ bookings = [], onUpdateTip }) => {
             const isConfirmed = job.scheduleStatus === 'confirmed';
             const isPaid = job.paymentStatus === 'paid';
             const isCancelled = job.status === 'cancelled' || job.scheduleStatus === 'rejected';
+            const proUserId =
+              typeof job.professional === 'object' && job.professional !== null
+                ? job.professional._id || job.professional.userId?._id || job.professional.userId
+                : job.professional;
+            // Full receipt from the payments API, with the booking's own
+            // mirrored fields as fallback when that fetch didn't succeed
+            const receipt = receipts[bookingId];
+            const receiptAmount = receipt?.amount ?? totalAmount;
+            const receiptMethod = receipt?.paymentMethod || job.paymentMethod || 'UPI';
+            const receiptTxn = receipt?.transactionId || job.transactionId;
+            const receiptDate = receipt?.createdAt || job.paidAt;
 
             return (
               <div
                 key={bookingId}
-                className="bg-surface-card rounded-[2rem] border border-surface-border shadow-modern overflow-hidden flex flex-col md:flex-row transition-all duration-300 hover:shadow-xl"
+                className="bg-surface-card rounded-[2rem] border border-surface-border shadow-modern overflow-hidden flex flex-col md:grid md:grid-cols-[1fr_20rem] transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
               >
                 {/* Left Column: Job Details */}
                 <div className="flex-1 p-8 border-b md:border-b-0 md:border-r border-surface-border">
@@ -189,6 +260,28 @@ const BookingsView = ({ bookings = [], onUpdateTip }) => {
                       <p className="mt-2 text-xs italic text-ink-muted">Notes: "{job.notes}"</p>
                     )}
                   </div>
+
+                  {/* Message + Reschedule actions */}
+                  <div className="flex flex-wrap gap-2.5 mt-4">
+                    {onMessage && proUserId && (
+                      <button
+                        type="button"
+                        onClick={() => onMessage({ userId: proUserId, name: proName, bookingId })}
+                        className="px-4 py-2.5 text-xs font-bold transition-all border rounded-xl border-brand/40 text-brand bg-brand/5 hover:bg-brand/10 active:scale-95"
+                      >
+                        💬 Message {proName}
+                      </button>
+                    )}
+                    {job.status === 'upcoming' && !isCancelled && (
+                      <button
+                        type="button"
+                        onClick={() => setRescheduleTarget(job)}
+                        className="px-4 py-2.5 text-xs font-bold transition-all border rounded-xl border-surface-border text-ink-main bg-surface-card hover:border-brand/40 hover:text-brand active:scale-95"
+                      >
+                        📅 Reschedule
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Right Column: Payment Details */}
@@ -229,6 +322,25 @@ const BookingsView = ({ bookings = [], onUpdateTip }) => {
                         ₹{totalAmount.toLocaleString()}
                       </span>
                     </div>
+
+                    {isPaid && (
+                      <div className="p-4 mb-6 space-y-1.5 text-sm border border-emerald-200 rounded-2xl bg-emerald-50/70">
+                        <p className="flex items-center gap-2 text-xs font-black tracking-wider uppercase text-emerald-800">
+                          🧾 Payment Receipt <span className="px-2 py-0.5 text-[10px] rounded-full bg-emerald-600 text-white">DEMO</span>
+                        </p>
+                        <p className="flex justify-between"><span className="text-ink-muted">Amount Paid</span><span className="font-bold text-ink-main">₹{receiptAmount.toLocaleString()}</span></p>
+                        <p className="flex justify-between"><span className="text-ink-muted">Method</span><span className="font-bold text-ink-main">{receiptMethod}</span></p>
+                        {receiptTxn && (
+                          <p className="flex justify-between gap-2"><span className="text-ink-muted">Txn ID</span><span className="font-mono text-xs font-bold text-ink-main">{receiptTxn}</span></p>
+                        )}
+                        {receiptDate && (
+                          <p className="flex justify-between"><span className="text-ink-muted">Paid On</span><span className="font-bold text-ink-main">{formatDate(receiptDate)}</span></p>
+                        )}
+                        {receipt?.status && (
+                          <p className="flex justify-between"><span className="text-ink-muted">Status</span><span className="font-bold capitalize text-emerald-700">{receipt.status}</span></p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-3 mt-auto">
@@ -273,6 +385,48 @@ const BookingsView = ({ bookings = [], onUpdateTip }) => {
                     )}
                   </div>
                 </div>
+
+                {/* Review strip — only for completed jobs, hidden once reviewed */}
+                {job.status === 'completed' && !reviewedIds.includes(bookingId) && (
+                  <div className="p-6 border-t md:col-span-2 border-surface-border bg-surface/60 md:flex md:items-center md:gap-6">
+                    <div className="mb-3 md:mb-0 shrink-0">
+                      <p className="text-sm font-bold text-ink-main">How was the service?</p>
+                      <div className="flex gap-1 mt-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewDrafts((prev) => ({ ...prev, [bookingId]: { ...prev[bookingId], rating: star } }))}
+                            className={`text-2xl transition-transform hover:scale-125 active:scale-95 ${(reviewDrafts[bookingId]?.rating || 0) >= star ? 'text-amber-500' : 'text-slate-300'}`}
+                            aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Add a short comment (optional)"
+                      value={reviewDrafts[bookingId]?.comment || ''}
+                      onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [bookingId]: { ...prev[bookingId], comment: e.target.value } }))}
+                      className="flex-1 w-full p-3 mb-3 text-sm border outline-none md:mb-0 rounded-xl border-surface-border bg-surface-card text-ink-main focus:ring-2 focus:ring-brand"
+                    />
+                    <button
+                      type="button"
+                      disabled={reviewSubmitting === bookingId}
+                      onClick={() => handleSubmitReview(job)}
+                      className="px-5 py-3 text-sm font-bold text-white transition-all shrink-0 bg-brand rounded-xl hover:bg-brand-dark active:scale-95 disabled:opacity-50"
+                    >
+                      {reviewSubmitting === bookingId ? 'Submitting...' : 'Submit Review'}
+                    </button>
+                  </div>
+                )}
+                {job.status === 'completed' && reviewedIds.includes(bookingId) && (
+                  <div className="px-6 py-3 text-sm font-bold border-t text-emerald-700 border-surface-border bg-emerald-50/60 md:col-span-2">
+                    ✓ Review submitted — thank you!
+                  </div>
+                )}
               </div>
             );
           })
@@ -308,9 +462,35 @@ const BookingsView = ({ bookings = [], onUpdateTip }) => {
               </div>
             </div>
 
-            {/* Placeholder for Card/UPI input fields */}
-            <div className="p-3 text-xs text-center border border-dashed border-surface-border rounded-xl text-ink-muted">
-              🔒 Card & UPI inputs will load here in production.
+            {/* Demo payment-method picker (no real gateway is charged) */}
+            <div>
+              <p className="mb-2 text-sm font-bold text-ink-main">Pay using</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { id: 'UPI', icon: '📱' },
+                  { id: 'Card', icon: '💳' },
+                  { id: 'Net Banking', icon: '🏦' },
+                  { id: 'Wallet', icon: '👛' }
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPaymentMethod(m.id)}
+                    className={`flex flex-col items-center gap-1 py-3 text-[11px] font-bold rounded-xl border transition-all ${
+                      paymentMethod === m.id
+                        ? 'bg-brand/10 border-brand text-brand shadow-sm'
+                        : 'bg-surface border-surface-border text-ink-muted hover:border-brand/40'
+                    }`}
+                  >
+                    <span className="text-xl">{m.icon}</span>
+                    {m.id}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-center text-ink-muted">
+                🔒 This is a <strong>demo payment</strong> — no real money is charged.
+                The payment is recorded on your booking, so it stays paid even after you refresh the page.
+              </p>
             </div>
 
             <div className="flex gap-3">
@@ -333,6 +513,19 @@ const BookingsView = ({ bookings = [], onUpdateTip }) => {
             </div>
           </div>
         </div>
+      )}
+      {/* --- RESCHEDULE MODAL --- */}
+      {rescheduleTarget && (
+        <RescheduleModal
+          booking={rescheduleTarget}
+          onClose={() => setRescheduleTarget(null)}
+          onRescheduled={(updated) => {
+            const uid = updated._id || updated.id;
+            setLocalBookings((prev) =>
+              prev.map((b) => ((b._id === uid || b.id === uid) ? { ...b, ...updated } : b))
+            );
+          }}
+        />
       )}
     </div>
   );

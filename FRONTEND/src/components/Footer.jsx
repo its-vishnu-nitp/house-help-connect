@@ -15,10 +15,11 @@ const Footer = () => {
         <div>
           <h3 className="mb-5 text-lg text-ink-main">Services</h3>
           <ul className="space-y-3 text-sm font-medium text-ink-muted">
-            <li className="transition-colors cursor-pointer hover:text-brand">Electrician</li>
-            <li className="transition-colors cursor-pointer hover:text-brand">Plumber</li>
-            <li className="transition-colors cursor-pointer hover:text-brand">Home Cleaning</li>
-            <li className="transition-colors cursor-pointer hover:text-brand">Appliance Repair</li>
+            <li><Link to="/#services" className="transition-colors hover:text-brand">Deep Cleaning</Link></li>
+            <li><Link to="/#services" className="transition-colors hover:text-brand">Daily Cooking</Link></li>
+            <li><Link to="/#services" className="transition-colors hover:text-brand">Electrical Repair</Link></li>
+            <li><Link to="/#services" className="transition-colors hover:text-brand">Plumbing</Link></li>
+            <li><Link to="/#services" className="transition-colors hover:text-brand">Babysitting</Link></li>
           </ul>
         </div>
 

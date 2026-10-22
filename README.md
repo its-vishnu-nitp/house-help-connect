@@ -8,14 +8,18 @@
 
 ## Features
 
-- **JWT authentication with role-based access** — separate experiences for clients and workers; tokens via `Authorization` header with an httpOnly cookie fallback, bcrypt-hashed passwords.
-- **Worker discovery** — paginated search by service category and city, with ratings, hourly rates and experience shown upfront; load-more pagination.
-- **Rich profiles** — workers manage multiple service tags, hourly rate, experience and bio; clients can save favourite professionals.
-- **End-to-end bookings** — create a booking, track its status (pending → confirmed → in progress → completed / cancelled), and view the full history from a dashboard.
-- **Worker verification flow** — Aadhaar/PAN document upload with an OCR-style review step before a professional goes live.
-- **Simulated payments** — checkout-style payment flow with service charge, tip and GST breakdown (demo only — no real money moves).
+- **JWT authentication with role-based access** — separate experiences for clients and workers; tokens via `Authorization` header with an httpOnly cookie fallback, bcrypt-hashed passwords. Registration is restricted to client/worker roles with a password minimum.
+- **Worker discovery** — paginated search by service category and city, with ratings, hourly rates and experience shown upfront; load-more pagination. Only Aadhaar-verified, available workers appear in search.
+- **Rich profiles** — workers manage multiple service tags, hourly rate, experience, bio and an availability toggle; clients can save favourite professionals and view them on a dedicated Saved page.
+- **End-to-end bookings with a real state machine** — request → confirmed → in progress → completed / cancelled, enforced on the server: only the worker can start and complete a job, only the party a decision is pending on can confirm it, and the price is always derived from the worker's hourly rate on the server (never trusted from the client). Bookings can be rescheduled (the other party re-confirms).
+- **In-app messaging** — clients and workers chat per booking, with a conversation list, unread badges and read receipts.
+- **Reviews & ratings** — clients review completed bookings; worker ratings aggregate onto their profiles.
+- **Notifications** — booking and payment events notify the other party in-app, with per-item and mark-all read.
+- **Worker verification flow** — workers verify their Aadhaar number before they can take jobs or appear in search.
+- **Simulated payments** — checkout-style payment flow with service charge, tip and GST breakdown; the payment is persisted on the server (receipt + payment history survive refresh). Demo only — no real money moves.
+- **API hardening** — Helmet headers, gzip compression, rate limiting (stricter on auth), a 50 KB JSON body limit, a consistent `{ success, message }` error contract, and database indexes on the booking/notification/message/review hot paths.
 - **Cold-start friendly UX** — the frontend detects slow first requests and shows a "waking up the server" banner, with one automatic retry for failed first GETs.
-- **Responsive design system** — deep-teal + warm-amber palette, Plus Jakarta Sans / Inter typography, skeleton loading states and toast notifications.
+- **Responsive design system** — deep-teal + warm-amber palette, Plus Jakarta Sans / Inter typography, skeleton loading states and toast notifications. Pages are code-split (landing and dashboards load as separate chunks).
 
 ## Tech Stack
 
@@ -109,17 +113,53 @@ Base path: `/api`. Protected routes require a valid JWT.
 | GET | `/search?category=&city=&page=&limit=` | Paginated worker search | Public |
 | GET | `/worker/:id` | Public worker profile by user ID | Public |
 | GET | `/` or `/me` | Current user's profile (creates role profile on first access) | Required |
-| PUT | `/update` | Update profile (name, phone, city, services, rate, …) | Required |
+| PUT | `/update` | Update profile (name, phone, city, services, rate, bio, …) | Required |
+| PUT | `/availability` | Toggle a worker's availability for search/bookings | Required (worker) |
 | POST | `/save-worker` | Save / unsave a professional (clients) | Required |
+| POST | `/verify-aadhaar` | Verify the worker's Aadhaar number | Required |
 
 ### Bookings — `/api/bookings`
 
 | Method | Endpoint | Description | Auth |
 |---|---|---|---|
-| POST | `/` | Create a booking | Required |
+| POST | `/` | Create a booking (price derived server-side from the worker's rate) | Required |
 | GET | `/` | List my bookings (as client or worker) | Required |
 | GET | `/:id` | Booking details (participants only) | Required |
-| PUT | `/:id/status` | Update booking status (participants only) | Required |
+| PUT | `/:id/status` | Update booking status (state machine enforced server-side) | Required |
+| PUT | `/:id/reschedule` | Reschedule date/time (other party re-confirms) | Required |
+| POST | `/:id/pay` | Record the demo payment (client only, persists receipt) | Required |
+
+### Messages — `/api/messages`
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| GET | `/` | My conversations (last message + unread count per person) | Required |
+| POST | `/` | Send a message `{ receiverId, content, bookingReference? }` | Required |
+| GET | `/:otherUserId` | Conversation history with a user | Required |
+| PUT | `/:otherUserId/read` | Mark a conversation as read | Required |
+
+### Reviews — `/api/reviews`
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| GET | `/professional/:professionalId` | Reviews shown on a worker's profile | Public |
+| POST | `/` | Review a completed booking (its client only) | Required |
+| GET | `/booking/:bookingId` | The review for a booking, or `null` | Required |
+
+### Notifications — `/api/notifications`
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| GET | `/` | My notifications | Required |
+| PUT | `/:id/read` | Mark one notification read | Required |
+| PUT | `/read-all` | Mark all notifications read | Required |
+
+### Payments — `/api/payments`
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| GET | `/mine` | My payment history (as client or worker) | Required |
+| GET | `/:bookingId` | Payment receipt for a booking (participants only) | Required |
 
 ## Scripts
 
@@ -138,10 +178,10 @@ Base path: `/api`. Protected routes require a valid JWT.
 house-help-connect/
 ├── BACKEND/
 │   ├── config/          # MongoDB connection
-│   ├── controllers/     # auth, profiles, bookings
-│   ├── middlewares/     # auth guard, error handler
-│   ├── models/          # User, HelperProfile, EmployerProfile, Booking
-│   ├── routes/          # auth, profiles, bookings (+ Phase-2 stubs)
+│   ├── controllers/     # auth, profiles, bookings, messages, reviews, notifications, payments
+│   ├── middlewares/     # auth guard, Aadhaar gate, error handler
+│   ├── models/          # User, HelperProfile, EmployerProfile, Booking, Message, Review, Notification, Payment
+│   ├── routes/          # auth, profiles, bookings, messages, reviews, notifications, payments
 │   ├── utils/           # asyncHandler, AppError
 │   ├── seed.js          # demo data seeder
 │   └── server.js        # app entry point
@@ -157,10 +197,10 @@ house-help-connect/
 
 ## Roadmap
 
-- **Phase 2 (scaffolded, not yet mounted):** in-app messaging, notifications, reviews & ratings submission, and real payment integration — controllers and route stubs already exist under `BACKEND/controllers` and `BACKEND/routes`.
-- Real payment gateway (Razorpay/Stripe) replacing the simulated flow.
+- Real payment gateway (Razorpay/Stripe) replacing the simulated flow — the payment module is read-only (receipts/history) until gateway keys are configured.
+- Real-time chat (WebSockets) instead of the current 10-second polling.
 - Push/email notifications for booking status changes.
-- Availability calendars for workers.
+- Availability calendars (date-level) for workers, beyond the current on/off toggle.
 
 ## License
 

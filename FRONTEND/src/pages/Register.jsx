@@ -6,20 +6,17 @@ const Register = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("");
   const [error, setError] = useState("");
-  
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const role = searchParams.get("role") || "";
 
   useEffect(() => {
-    const selectedRole = searchParams.get("role");
-    if (!selectedRole) {
+    if (!role) {
       navigate("/join");
-    } else {
-      setRole(selectedRole);
     }
-  }, [searchParams, navigate]);
+  }, [role, navigate]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -28,7 +25,7 @@ const Register = () => {
       await authService.register({ name: username, email, password, role });
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message || "Registration failed");
+      setError(err.response?.data?.message || err.message || "Registration failed");
     }
   };
 
