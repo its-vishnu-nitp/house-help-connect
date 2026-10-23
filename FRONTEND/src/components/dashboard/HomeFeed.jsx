@@ -197,7 +197,7 @@ const HomeFeed = ({ user, onSearch, professionals = [], isSearching, onBookWorke
                           ? <>⭐ {Number(pro.rating).toFixed(1)} <span className="text-xs font-medium">({pro.totalReviews || 0})</span></>
                           : <span className="text-xs font-bold text-brand">✦ New Pro</span>}
                       </span>
-                      <span className="font-bold text-ink-main">₹{pro.hourlyRate}/hr</span>
+                      <span className="font-bold text-ink-main">₹{pro.hourlyRate > 0 ? pro.hourlyRate : 250}/hr</span>
                     </div>
                   </div>
                   

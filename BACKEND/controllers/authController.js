@@ -81,7 +81,9 @@ export const register = asyncHandler(async (req, res, next) => {
       await HelperProfile.create({
         userId: newUser._id,
         serviceCategory: "Deep Cleaning",
-        hourlyRate: 0,
+        // No hourlyRate here on purpose: the schema default (₹250) applies.
+        // Setting 0 explicitly (the old behaviour) made every self-registered
+        // worker unbookable, because createBooking prices from this rate.
       });
     }
   } catch (error) {

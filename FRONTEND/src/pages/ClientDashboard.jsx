@@ -10,6 +10,7 @@ import SavedView from '../components/dashboard/SavedView';
 import ChatWindow from '../components/dashboard/ChatWindow';
 import { bookingService } from '../services/booking.service';
 import { profileService } from '../services/profile.service';
+import { showToast } from '../utils/toast';
 
 const ClientDashboard = ({ user }) => {
   const [currentView, setCurrentView] = useState('home');
@@ -85,6 +86,11 @@ const ClientDashboard = ({ user }) => {
       setCurrentView('bookings'); // Navigate directly to bookings tab to see the pending job
     } catch (err) {
       console.error("Failed to submit booking request", err);
+      // Surface the failure — silently swallowing it made the modal's
+      // Send Request button look dead. The modal also shows the message
+      // inline because this handler rethrows.
+      showToast(err.response?.data?.message || 'Could not send the booking request. Please try again.', 'error');
+      throw err;
     }
   };
 

@@ -208,7 +208,7 @@ const ProfessionalsView = ({ onBookWorker, savedIds = [], onToggleSave, onMessag
                       ? <>⭐ {Number(worker.rating).toFixed(1)} <span className="text-xs font-medium">({worker.totalReviews || 0})</span></>
                       : <span className="text-xs font-bold text-brand">✦ New Pro</span>}
                   </span>
-                  <span className="font-bold text-ink-main">₹{worker.hourlyRate}/hr</span>
+                  <span className="font-bold text-ink-main">₹{worker.hourlyRate > 0 ? worker.hourlyRate : 250}/hr</span>
                 </div>
               </div>
 

@@ -5,6 +5,7 @@ const BookingModal = ({ worker, onClose, onSubmit }) => {
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   if (!worker) return null;
 
@@ -16,6 +17,7 @@ const BookingModal = ({ worker, onClose, onSubmit }) => {
     if (!date || !time) return;
 
     setSubmitting(true);
+    setError('');
     try {
       await onSubmit({
         professionalId: worker.userId?._id || worker.userId,
@@ -27,6 +29,10 @@ const BookingModal = ({ worker, onClose, onSubmit }) => {
         time,
         notes
       });
+    } catch (err) {
+      // Show the server's reason right here — without this, a rejected
+      // request just closed the spinner and looked like a dead button.
+      setError(err.response?.data?.message || 'Could not send the request. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -43,6 +49,11 @@ const BookingModal = ({ worker, onClose, onSubmit }) => {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div role="alert" className="p-3 text-sm font-medium text-rose-700 border border-rose-200 rounded-xl bg-rose-50">
+              {error}
+            </div>
+          )}
           <div>
             <label className="block mb-1 text-xs font-semibold text-ink-muted">Service Date</label>
             <input

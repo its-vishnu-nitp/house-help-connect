@@ -78,10 +78,13 @@ export const createBooking = asyncHandler(async (req, res, next) => {
   if (!helperProfile) {
     return next(new AppError("This professional has not completed their profile yet", 400));
   }
-  const hourlyRate = Number(helperProfile.hourlyRate) || 0;
-  if (hourlyRate <= 0) {
-    return next(new AppError("This professional has not set an hourly rate yet", 400));
-  }
+  // Profiles created before the register fix can carry hourlyRate: 0
+  // (registration used to set it explicitly). Treat a missing/zero rate as
+  // the platform default (the HelperProfile schema default) instead of
+  // making the worker unbookable.
+  const DEFAULT_HOURLY_RATE = 250;
+  const storedRate = Number(helperProfile.hourlyRate) || 0;
+  const hourlyRate = storedRate > 0 ? storedRate : DEFAULT_HOURLY_RATE;
   const targetPrice = hourlyRate * 2;
 
   const booking = await Booking.create({
