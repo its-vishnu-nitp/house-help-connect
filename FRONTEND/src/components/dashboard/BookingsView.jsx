@@ -189,10 +189,16 @@ const BookingsView = ({ bookings = [], onUpdateTip, onMessage }) => {
         ) : (
           displayBookings.map((job) => {
             const bookingId = job._id || job.id;
+            // Never render a raw Mongo ObjectId as a name: populate leaves
+            // the id behind when the referenced user no longer exists
+            // (e.g. stale/seeded bookings), so fall back to a clean label.
+            const isObjectId = (v) => typeof v === 'string' && /^[0-9a-f]{24}$/i.test(v);
             const proName =
               typeof job.professional === 'object' && job.professional !== null
                 ? job.professional.name || job.professional.userId?.name || 'Professional'
-                : job.professional || 'Professional';
+                : isObjectId(job.professional)
+                  ? 'Professional'
+                  : job.professional || 'Professional';
 
             const serviceName = job.service || job.serviceCategory || 'Home Service';
             const baseFare = job.pricing?.basePrice ?? job.basePrice ?? 500;
